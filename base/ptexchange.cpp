@@ -1,9 +1,12 @@
 
+#include <math.h>
+
 extern "C" {
   #include "slog.h"
 };
 
-#include "aemutil.hpp"
+#include "tdtwave2dexception.hpp"
+#include "tdtwave2dutil.hpp"
 
 #include "ptexchange.hpp"
 
@@ -112,7 +115,7 @@ PTExchange::step()
     }
 
     if (MPI_Bcast(ptpairs, temperature_size, MPI_INT, 0, temperature_communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broadcast ptpairs\n");
+      throw TDTWAVE2DEXCEPTION("Failed to broadcast ptpairs\n");
     }
 
     //
@@ -133,7 +136,7 @@ PTExchange::step()
     }
     
     if (partner < 0) {
-      throw AEMEXCEPTION("Failed to find self in exchange list\n");
+      throw TDTWAVE2DEXCEPTION("Failed to find self in exchange list\n");
     }
     
     //
@@ -151,11 +154,11 @@ PTExchange::step()
       sendmsg[4] = global.random.uniform();
       
       if (MPI_Send(sendmsg, 5, MPI_DOUBLE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-      	throw AEMEXCEPTION("Failed to send current state to partner seconday\n");
+      	throw TDTWAVE2DEXCEPTION("Failed to send current state to partner seconday\n");
       }      
 
       if (MPI_Recv(recvmsg, 5, MPI_DOUBLE, partner, 0, temperature_communicator, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-      	throw AEMEXCEPTION("Failed to recv current state to partner secondary\n");
+      	throw TDTWAVE2DEXCEPTION("Failed to recv current state to partner secondary\n");
       }	
       
       partner_likelihood = recvmsg[0];
@@ -170,11 +173,11 @@ PTExchange::step()
       sendmsg[4] = 0.0;
 
       if (MPI_Recv(recvmsg, 5, MPI_DOUBLE, partner, 0, temperature_communicator, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-      	throw AEMEXCEPTION("Failed to recv current state to partner primary\n");
+      	throw TDTWAVE2DEXCEPTION("Failed to recv current state to partner primary\n");
       }
 
       if (MPI_Send(sendmsg, 5, MPI_DOUBLE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-      	throw AEMEXCEPTION("Failed to send current state to partner primary\n");
+      	throw TDTWAVE2DEXCEPTION("Failed to send current state to partner primary\n");
       }      
       
       partner_likelihood = recvmsg[0];
@@ -208,50 +211,50 @@ PTExchange::step()
 	send_length = wavetree2d_sub_encode(global.wt, send_buffer, send_buffer_size);
 	
 	if (send_length < 0) {
-	  throw AEMEXCEPTION("Failed to encode wavetree\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to encode wavetree\n");
 	}
 	
 	if (MPI_Send(&send_length, 1, MPI_INT, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to send length to partner secondary\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to send length to partner secondary\n");
 	}
 	if (MPI_Send(send_buffer, send_length, MPI_BYTE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to send encoded model to partner seconday\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to send encoded model to partner seconday\n");
 	}
 	
 	if (MPI_Recv(&recv_length, 1, MPI_INT, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to recv length to partner secondary\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to recv length to partner secondary\n");
 	}
 	if (MPI_Recv(recv_buffer, recv_length, MPI_BYTE, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to recv encoded model to partner seconday\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to recv encoded model to partner seconday\n");
 	}
 	
       } else {
 	
 	if (MPI_Recv(&recv_length, 1, MPI_INT, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to recv length to partner primary\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to recv length to partner primary\n");
 	}
 	if (MPI_Recv(recv_buffer, recv_length, MPI_BYTE, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to recv encoded model to partner primary\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to recv encoded model to partner primary\n");
 	}
 	  
 	
 	send_length = wavetree2d_sub_encode(global.wt, send_buffer, send_buffer_size);
 	
 	if (send_length < 0) {
-	  throw AEMEXCEPTION("Failed to encode wavetree\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to encode wavetree\n");
 	}
 	
 	if (MPI_Send(&send_length, 1, MPI_INT, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to send length to partner secondary\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to send length to partner secondary\n");
 	}
 	if (MPI_Send(send_buffer, send_length, MPI_BYTE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to send encoded model to partner seconday\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to send encoded model to partner seconday\n");
 	}
 	
       }
       
       if (wavetree2d_sub_decode(global.wt, recv_buffer, recv_length) < 0) {
-	throw AEMEXCEPTION("Failed to decode wavetree\n");
+	throw TDTWAVE2DEXCEPTION("Failed to decode wavetree\n");
       }
 
       //
@@ -262,21 +265,21 @@ PTExchange::step()
       if (send) {
 	
 	if (MPI_Send(&global.lambda_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to send lambda\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to send lambda\n");
 	}
 	
 	if (MPI_Recv(&new_lambda_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to recv lambda\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to recv lambda\n");
 	}
 	
       } else {
 	
 	if (MPI_Recv(&new_lambda_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to recv lambda\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to recv lambda\n");
 	}
 	  
 	if (MPI_Send(&global.lambda_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-	  throw AEMEXCEPTION("Failed to send length to partner secondary\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to send length to partner secondary\n");
 	}
       }
 
@@ -292,11 +295,11 @@ PTExchange::step()
         wavetree_pp_setscale(global.proposal, 0.0, &prior_scale);
         
         if (MPI_Send(&prior_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-          throw AEMEXCEPTION("Failed to send prior\n");
+          throw TDTWAVE2DEXCEPTION("Failed to send prior\n");
         }
         
         if (MPI_Recv(&new_prior_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-          throw AEMEXCEPTION("Failed to recv prior\n");
+          throw TDTWAVE2DEXCEPTION("Failed to recv prior\n");
         }
         
       } else {
@@ -305,11 +308,11 @@ PTExchange::step()
         wavetree_pp_setscale(global.proposal, 0.0, &prior_scale);
 	
         if (MPI_Recv(&new_prior_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator, &status) != MPI_SUCCESS) {
-          throw AEMEXCEPTION("Failed to recv prior\n");
+          throw TDTWAVE2DEXCEPTION("Failed to recv prior\n");
         }
         
         if (MPI_Send(&prior_scale, 1, MPI_DOUBLE, partner, 0, temperature_communicator) != MPI_SUCCESS) {
-          throw AEMEXCEPTION("Failed to send length to partner secondary\n");
+          throw TDTWAVE2DEXCEPTION("Failed to send length to partner secondary\n");
         }
       }
 
@@ -317,7 +320,7 @@ PTExchange::step()
       global.current_likelihood = partner_likelihood;
       global.current_log_normalization = partner_log_normalization;
       if (wavetree_pp_setscale(global.proposal, new_prior_scale, NULL) < 0) {
-        throw AEMEXCEPTION("Failed to set new prior scale\n");
+        throw TDTWAVE2DEXCEPTION("Failed to set new prior scale\n");
       }
     }
   }
@@ -333,7 +336,7 @@ PTExchange::step()
   if (processesperchain > 1) {
     
     if (MPI_Bcast(&exchanged, 1, MPI_INT, 0, chain_communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broad cast exchanged\n");
+      throw TDTWAVE2DEXCEPTION("Failed to broad cast exchanged\n");
     }
     
     if (exchanged) {
@@ -341,34 +344,34 @@ PTExchange::step()
       if (chain_rank == 0) {
 	send_length = wavetree2d_sub_encode(global.wt, send_buffer, send_buffer_size);
 	if (send_length < 0) {
-	  throw AEMEXCEPTION("Failed to encode wavetree\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to encode wavetree\n");
 	}
       }
 
       if (MPI_Bcast(&global.current_likelihood, 1, MPI_DOUBLE, 0, chain_communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broad cast likelihood\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broad cast likelihood\n");
       }
 
       if (MPI_Bcast(&global.current_log_normalization, 1, MPI_DOUBLE, 0, chain_communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broad cast log normalization\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broad cast log normalization\n");
       }
 
       if (MPI_Bcast(&global.lambda_scale, 1, MPI_DOUBLE, 0, chain_communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broad cast lambda\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broad cast lambda\n");
       }
       
       if (MPI_Bcast(&send_length, 1, MPI_INT, 0, chain_communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broad cast send length\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broad cast send length\n");
       }
       
       if (MPI_Bcast(send_buffer, send_length, MPI_BYTE, 0, chain_communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broad case encoded model\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broad case encoded model\n");
       }
       
       if (chain_rank != 0) {
 	
 	if (wavetree2d_sub_decode(global.wt, send_buffer, send_length) < 0) {
-	  throw AEMEXCEPTION("Failed to decode wavetree\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to decode wavetree\n");
 	}
       }
     }
@@ -379,7 +382,7 @@ PTExchange::step()
   // INFO("%d Old Like %f Current %f New Like %f", exchanged, old_likelihood, global.current_likelihood, new_likelihood);
   
   // if (new_likelihood != global.current_likelihood) {
-  //   throw AEMEXCEPTION("Likelihood mismatch %.9g", fabs(global.current_likelihood - new_likelihood));
+  //   throw TDTWAVE2DEXCEPTION("Likelihood mismatch %.9g", fabs(global.current_likelihood - new_likelihood));
   // }
 
 
@@ -410,40 +413,40 @@ PTExchange::initialize_mpi(MPI_Comm _global_communicator,
 			   int _ntemperatures)
 {
   if (MPI_Comm_dup(_global_communicator, &global_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to duplicate global communicator");
+    throw TDTWAVE2DEXCEPTION("Failed to duplicate global communicator");
   }
   
   if (MPI_Comm_size(global_communicator, &global_size) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure");
+    throw TDTWAVE2DEXCEPTION("MPI Failure");
   }
   if (MPI_Comm_rank(global_communicator, &global_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure");
+    throw TDTWAVE2DEXCEPTION("MPI Failure");
   }
   
   if (MPI_Comm_dup(_temperature_communicator, &temperature_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to duplicate global communicator");
+    throw TDTWAVE2DEXCEPTION("Failed to duplicate global communicator");
   }
   if (MPI_Comm_dup(_chain_communicator, &chain_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to duplicate global communicator");
+    throw TDTWAVE2DEXCEPTION("Failed to duplicate global communicator");
   }
 
   if (MPI_Comm_rank(chain_communicator, &chain_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure");
+    throw TDTWAVE2DEXCEPTION("MPI Failure");
   }
     
 
   if (chain_rank == 0) {
     if (MPI_Comm_rank(temperature_communicator, &temperature_rank) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("MPI Failure");
+      throw TDTWAVE2DEXCEPTION("MPI Failure");
     }
       
     if (MPI_Comm_size(temperature_communicator, &temperature_size) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("MPI Failure");
+      throw TDTWAVE2DEXCEPTION("MPI Failure");
     }
       
     ntotalchains = temperature_size;
     if (global_size % ntotalchains != 0) {
-      throw AEMEXCEPTION("Global size/Total Chains mismatch: %d %d\n", global_size, ntotalchains);
+      throw TDTWAVE2DEXCEPTION("Global size/Total Chains mismatch: %d %d\n", global_size, ntotalchains);
     }
     
     processesperchain = global_size/ntotalchains;
@@ -456,10 +459,10 @@ PTExchange::initialize_mpi(MPI_Comm _global_communicator,
 
   
   if (MPI_Bcast(&ntotalchains, 1, MPI_INT, 0, chain_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to broadcast ntotalchains.");
+    throw TDTWAVE2DEXCEPTION("Failed to broadcast ntotalchains.");
   }
   if (MPI_Bcast(&processesperchain, 1, MPI_INT, 0, chain_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to broardcast processesperchain.");
+    throw TDTWAVE2DEXCEPTION("Failed to broardcast processesperchain.");
   }
 
   INFO("%03d: Global Size: %d NChains: %d PPC: %d\n", global_rank, global_size, ntotalchains, processesperchain);

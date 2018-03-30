@@ -1,11 +1,14 @@
 
+#include <math.h>
+
 #include "resample.hpp"
 
 extern "C" {
   #include "slog.h"
 };
 
-#include "aemutil.hpp"
+#include "tdtwave2dexception.hpp"
+#include "tdtwave2dutil.hpp"
 
 Resample::Resample(Global &_global) :
   global(_global),
@@ -134,7 +137,7 @@ Resample::step(double resample_temperature)
     //
     int send_length = wavetree2d_sub_encode(global.wt, send_buffer, send_buffer_size);
     if (send_length < 0) {
-      throw AEMEXCEPTION("Failed to encode wavetree\n");
+      throw TDTWAVE2DEXCEPTION("Failed to encode wavetree\n");
     }
     
     //
@@ -166,7 +169,7 @@ Resample::step(double resample_temperature)
       MPI_Get_count(&status, MPI_BYTE, &recv_length);
 
       if (recv_length > recv_buffer_size) {
-	throw AEMEXCEPTION("Too many bytes for buffer: %d > %d", recv_length, recv_buffer_size);
+	throw TDTWAVE2DEXCEPTION("Too many bytes for buffer: %d > %d", recv_length, recv_buffer_size);
       }
       
       MPI_Recv(recv_buffer, recv_length, MPI_BYTE, sources_array[temperature_rank], 0, temperature_communicator, &status);
@@ -175,7 +178,7 @@ Resample::step(double resample_temperature)
       // Set my model and the current likelihood
       //
       if (wavetree2d_sub_decode(global.wt, recv_buffer, recv_length) < 0) {
-	throw AEMEXCEPTION("Failed to decode wavetree\n");
+	throw TDTWAVE2DEXCEPTION("Failed to decode wavetree\n");
       }
       global.current_likelihood = likelihood_array[sources_array[temperature_rank]];
       global.lambda_scale = lambda_array[sources_array[temperature_rank]];
@@ -222,7 +225,7 @@ Resample::step(double resample_temperature)
 	//
 	int send_length = wavetree2d_sub_encode(global.wt, send_buffer, send_buffer_size);
 	if (send_length < 0) {
-	  throw AEMEXCEPTION("Failed to encode wavetree\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to encode wavetree\n");
 	}
 
 	MPI_Bcast(&send_length, 1, MPI_INT, 0, chain_communicator);
@@ -237,7 +240,7 @@ Resample::step(double resample_temperature)
 	MPI_Bcast(recv_buffer, recv_length, MPI_BYTE, 0, chain_communicator);
 
 	if (wavetree2d_sub_decode(global.wt, recv_buffer, recv_length) < 0) {
-	  throw AEMEXCEPTION("Failed to decode wavetree\n");
+	  throw TDTWAVE2DEXCEPTION("Failed to decode wavetree\n");
 	}
       }
 
@@ -250,7 +253,7 @@ Resample::step(double resample_temperature)
   // INFO("Old Like %f Current %f New Like %f", old_likelihood, global.current_likelihood, new_likelihood);
   
   // if (fabs(new_likelihood - global.current_likelihood) > 1.0e-9) {
-  //   throw AEMEXCEPTION("Likelihood mismatch %.9g", fabs(global.current_likelihood - new_likelihood));
+  //   throw TDTWAVE2DEXCEPTION("Likelihood mismatch %.9g", fabs(global.current_likelihood - new_likelihood));
   // }
 
   return model_broadcast_required;
@@ -278,34 +281,34 @@ Resample::initialize_mpi(MPI_Comm _global_communicator,
 			 MPI_Comm _chain_communicator)
 {
   if (MPI_Comm_dup(_global_communicator, &global_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to duplicate global communicator");
+    throw TDTWAVE2DEXCEPTION("Failed to duplicate global communicator");
   }
   
   if (MPI_Comm_size(global_communicator, &global_size) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure");
+    throw TDTWAVE2DEXCEPTION("MPI Failure");
   }
   if (MPI_Comm_rank(global_communicator, &global_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure");
+    throw TDTWAVE2DEXCEPTION("MPI Failure");
   }
   
   if (MPI_Comm_dup(_temperature_communicator, &temperature_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to duplicate global communicator");
+    throw TDTWAVE2DEXCEPTION("Failed to duplicate global communicator");
   }
   if (MPI_Comm_dup(_chain_communicator, &chain_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to duplicate global communicator");
+    throw TDTWAVE2DEXCEPTION("Failed to duplicate global communicator");
   }
 
   if (MPI_Comm_rank(chain_communicator, &chain_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure");
+    throw TDTWAVE2DEXCEPTION("MPI Failure");
   }
     
   if (chain_rank == 0) {
     if (MPI_Comm_rank(temperature_communicator, &temperature_rank) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("MPI Failure");
+      throw TDTWAVE2DEXCEPTION("MPI Failure");
     }
       
     if (MPI_Comm_size(temperature_communicator, &temperature_size) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("MPI Failure");
+      throw TDTWAVE2DEXCEPTION("MPI Failure");
     }
       
     likelihood_array = new double[temperature_size];
@@ -319,10 +322,10 @@ Resample::initialize_mpi(MPI_Comm _global_communicator,
   }
 
   if (MPI_Bcast(&temperature_size, 1, MPI_INT, 0, chain_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to broadcast ntotalchains.");
+    throw TDTWAVE2DEXCEPTION("Failed to broadcast ntotalchains.");
   }
   if (MPI_Bcast(&processesperchain, 1, MPI_INT, 0, chain_communicator) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("Failed to broardcast processesperchain.");
+    throw TDTWAVE2DEXCEPTION("Failed to broardcast processesperchain.");
   }
 
   INFO("%03d: Global Size: %d NChains: %d PPC: %d\n", global_rank, global_size, temperature_size, processesperchain);

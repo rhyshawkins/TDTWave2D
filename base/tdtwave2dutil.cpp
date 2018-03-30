@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "aemutil.hpp"
+#include "tdtwave2dutil.hpp"
 
 std::string mkfilename(const char *prefix, const char *file)
 {

@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "tdt2dwaveexception.hpp"
+#include "tdtwave2dexception.hpp"
 
 extern "C" {
   #include "slog.h"
 };
 
-tdt2dwaveexception::tdt2dwaveexception(const char *srcfile,
+tdtwave2dexception::tdtwave2dexception(const char *srcfile,
 			   const char *function,
 			   int lineno,
 			   const char *fmt, ...)
@@ -26,6 +26,6 @@ tdt2dwaveexception::tdt2dwaveexception(const char *srcfile,
   
 }
 
-tdt2dwaveexception::~tdt2dwaveexception()
+tdtwave2dexception::~tdtwave2dexception()
 {
 }

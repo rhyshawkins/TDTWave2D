@@ -24,6 +24,7 @@ extern "C" {
 };
 
 #include "rng.hpp"
+#include "tdtwave2dimage.hpp"
 #include "hierarchicalmodel.hpp"
 
 class Global {
@@ -109,6 +110,8 @@ public:
   int degreex;
   int degreey;
 
+  tdtwave2dimage *image;
+  
   double *model;
   double *workspace;
 

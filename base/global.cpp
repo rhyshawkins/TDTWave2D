@@ -34,13 +34,11 @@ int global_indextocoord(void *user, int index, int *i, int *j, int *k, int *dept
 }
 
 Global::Global(const char *filename,
-	       const std::vector<std::string> &stm_files,
 	       const char *initial_model,
 	       const char *prior_file,
+	       const char *hierarchical_prior_file,
 	       int _degreex,
 	       int _degreey,
-	       double _depth,
-	       const std::vector<std::string> &hierarchical_files,
 	       int seed,
 	       int _kmax,
 	       bool _posteriork,
@@ -48,14 +46,12 @@ Global::Global(const char *filename,
 	       int vwavelet) :
   kmax(_kmax),
   treemaxdepth(-1),
-  depth(_depth),
   wt(nullptr),
   ch(nullptr),
   hnk(nullptr),
   proposal(nullptr),
   degreex(_degreex),
   degreey(_degreey),
-  observations(nullptr),
   image(nullptr),
   model(nullptr),
   workspace(nullptr),
@@ -91,66 +87,23 @@ Global::Global(const char *filename,
 {
   if (degreex < 0 || degreex >= 16 ||
       degreey < 0 || degreey >= 16) {
-    throw TDT2DWAVEEXCEPTION("Degree(s) out of range: %d x %d\n", degreex, degreey);
+    throw TDTWAVE2DEXCEPTION("Degree(s) out of range: %d x %d\n", degreex, degreey);
   }
   
   if (depth <= 0.0) {
-    throw TDT2DWAVEEXCEPTION("Depth out of range\n");
+    throw TDTWAVE2DEXCEPTION("Depth out of range\n");
   }
 
   if (!posteriork) {
     //
     // Load observations
     //
-    observations = new aemobservations(filename);
 
-    //
-    // Load stm files
-    //
-    for (auto &s : stm_files) {
-      cTDEmSystem *p = new cTDEmSystem(s);
-
-      forwardmodel.push_back(p);
-
-      double *centre_time = new double[p->WinSpec.size()];
-
-      int t = 0;
-      for (auto &w : p->WinSpec) {
-	centre_time[t] = (w.TimeLow + w.TimeHigh)/2.0;
-	t ++;
-      }
-
-      forwardmodel_time.push_back(centre_time);
-
-      //
-      // Create covariance information
-      //
-      cov_count.push_back(p->WinSpec.size());
-      cov_delta.push_back(new double[p->WinSpec.size()]);
-      cov_mu.push_back(new double[p->WinSpec.size()]);
-      cov_sigma.push_back(new double[p->WinSpec.size() * p->WinSpec.size()]);
-      
-    }
-
-    for (auto &h : hierarchical_files) {
-      hierarchicalmodel *m = hierarchicalmodel::load(h.c_str());
-      if (m == nullptr) {
-	throw TDT2DWAVEEXCEPTION("Failed to create/load hierarchical model");
-      }
-      
-      lambda.push_back(m);
-    }
-    
-    if (forwardmodel.size() != observations->points[0].responses.size()) {
-      throw TDT2DWAVEEXCEPTION("Mismatch in STM and responses size: %d != %d\n",
-			 (int)forwardmodel.size(),
-			 (int)observations->points[0].responses.size());
-    }
   }
 
   wt = wavetree2d_sub_create(degreex, degreey, 0.0);
   if (wt == NULL) {
-    throw TDT2DWAVEEXCEPTION("Failed to create wavetree\n");
+    throw TDTWAVE2DEXCEPTION("Failed to create wavetree\n");
   }
 
   width = wavetree2d_sub_get_width(wt);
@@ -162,13 +115,8 @@ Global::Global(const char *filename,
   INFO("Image: %d x %d\n", width, height);
 
   if (!posteriork) {
-    if ((int)observations->points.size() != width) {
-      throw TDT2DWAVEEXCEPTION("Image size mismatch to observations: %d != %d\n",
-    			 width,
-    			 (int)observations->points.size());
-    }
     
-    image = new aemimage(height, width, depth, DEFAULT_CONDUCTIVITY);
+    image = new tdtwave2dimage(height, width, 0.0);
 
     model = new double[size];
     int workspacesize = width;
@@ -177,7 +125,7 @@ Global::Global(const char *filename,
     }
     workspace = new double[workspacesize];
 
-    int ntotal = observations->total_response_datapoints();
+    int ntotal = 0; // TODO
     INFO("Data: %d total points\n", ntotal);
 
     residual_size = ntotal;
@@ -196,13 +144,13 @@ Global::Global(const char *filename,
   }
   
   if (initial_model == NULL) {
-    if (wavetree2d_sub_initialize(wt, log(DEFAULT_CONDUCTIVITY)) < 0) {
-      throw TDT2DWAVEEXCEPTION("Failed to initialize wavetree\n");
+    if (wavetree2d_sub_initialize(wt, 0.0) < 0) {
+      throw TDTWAVE2DEXCEPTION("Failed to initialize wavetree\n");
     }
   } else {
 
     if (wavetree2d_sub_load_promote(wt, initial_model) < 0) {
-      throw TDT2DWAVEEXCEPTION("Failed to load initial model: %s\n", initial_model);
+      throw TDTWAVE2DEXCEPTION("Failed to load initial model: %s\n", initial_model);
     }
 
     INFO("Loaded model with %d coefficients\n", wavetree2d_sub_coeff_count(wt));
@@ -220,7 +168,7 @@ Global::Global(const char *filename,
 					      degreey,
 					      kmax);
   if (hnk == NULL) {
-    throw TDT2DWAVEEXCEPTION("Failed to create hnk table\n");
+    throw TDTWAVE2DEXCEPTION("Failed to create hnk table\n");
   }
 
   //
@@ -228,7 +176,7 @@ Global::Global(const char *filename,
   //
   ch = chain_history_create(CHAIN_STEPS);
   if (ch == nullptr) {
-    throw TDT2DWAVEEXCEPTION("Failed to create chain history\n");
+    throw TDTWAVE2DEXCEPTION("Failed to create chain history\n");
   }
 
   
@@ -240,7 +188,7 @@ Global::Global(const char *filename,
 					    global_indextocoord,
 					    wt);
   if (coeff_hist == NULL) {
-    throw TDT2DWAVEEXCEPTION("Failed to create coefficient histogram\n");
+    throw TDTWAVE2DEXCEPTION("Failed to create coefficient histogram\n");
   }
 
   //
@@ -249,7 +197,7 @@ Global::Global(const char *filename,
   if (prior_file != nullptr) {
     proposal = wavetree_pp_load(prior_file, seed, coeff_hist);
     if (proposal == NULL) {
-      throw TDT2DWAVEEXCEPTION("Failed to load proposal file\n");
+      throw TDTWAVE2DEXCEPTION("Failed to load proposal file\n");
     }
     
     for (int i = 0; i < ncoeff; i ++) {
@@ -257,7 +205,7 @@ Global::Global(const char *filename,
       
       int ii, ij;
       if (wavetree2d_sub_2dindices(wt, i, &ii, &ij) < 0) {
-	throw TDT2DWAVEEXCEPTION("Failed to get 2d indices\n");
+	throw TDTWAVE2DEXCEPTION("Failed to get 2d indices\n");
       }
       
       double vmin, vmax;
@@ -269,26 +217,26 @@ Global::Global(const char *filename,
 				    0.0,
 				    &vmin,
 				    &vmax) < 0) {
-	throw TDT2DWAVEEXCEPTION("Failed to get coefficient range\n");
+	throw TDTWAVE2DEXCEPTION("Failed to get coefficient range\n");
       }
       
       if (coefficient_histogram_set_range(coeff_hist, 
 					  i,
 					  vmin,
 					  vmax) < 0) {
-	throw TDT2DWAVEEXCEPTION("Failed to set coefficient histogram range\n");
+	throw TDTWAVE2DEXCEPTION("Failed to set coefficient histogram range\n");
       }
     }
   }
     
   hwaveletf = wavelet_inverse_function_from_id(hwavelet);
   if (hwaveletf == nullptr) {
-    throw TDT2DWAVEEXCEPTION("Invalid horizontal wavelet %d\n", hwavelet);
+    throw TDTWAVE2DEXCEPTION("Invalid horizontal wavelet %d\n", hwavelet);
   }
 
   vwaveletf = wavelet_inverse_function_from_id(vwavelet);
   if (vwaveletf == nullptr) {
-    throw TDT2DWAVEEXCEPTION("Invalid vertical wavelet %d\n", vwavelet);
+    throw TDTWAVE2DEXCEPTION("Invalid vertical wavelet %d\n", vwavelet);
   }
 
 }
@@ -305,15 +253,15 @@ Global::likelihood(double &log_normalization)
     //
     // Get tree model wavelet coefficients
     //
-    memset(image->, 0, sizeof(double) * size);
-    if (wavetree2d_sub_map_to_array(wt, image->conductivity, size) < 0) {
-      throw TDT2DWAVEEXCEPTION("Failed to map model to array\n");
+    memset(image->image, 0, sizeof(double) * size);
+    if (wavetree2d_sub_map_to_array(wt, image->image, size) < 0) {
+      throw TDTWAVE2DEXCEPTION("Failed to map model to array\n");
     }
 
     //
     // Inverse wavelet transform
     //
-    if (generic_lift_inverse2d(image->conductivity,
+    if (generic_lift_inverse2d(image->image,
 			       width,
 			       height,
 			       width,
@@ -321,7 +269,7 @@ Global::likelihood(double &log_normalization)
 			       hwaveletf,
 			       vwaveletf,
 			       1) < 0) {
-      throw TDT2DWAVEEXCEPTION("Failed to do inverse transform on coefficients\n");
+      throw TDTWAVE2DEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
 
     double sum = 0.0;
@@ -378,11 +326,11 @@ Global::initialize_mpi(MPI_Comm _communicator, double _temperature)
   communicator = _communicator;
 
   if (MPI_Comm_size(communicator, &mpi_size) != MPI_SUCCESS) {
-    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
+    throw TDTWAVE2DEXCEPTION("MPI Failure\n");
   }
   
   if (MPI_Comm_rank(communicator, &mpi_rank) != MPI_SUCCESS) {
-    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
+    throw TDTWAVE2DEXCEPTION("MPI Failure\n");
   }
 
   column_offsets = new int[mpi_size];
@@ -413,7 +361,7 @@ Global::initialize_mpi(MPI_Comm _communicator, double _temperature)
   }
 
   if (column_offsets[mpi_size - 1] + column_sizes[mpi_size - 1] != image->columns) {
-    throw TDT2DWAVEEXCEPTION("Column sharing intialization failure\n");
+    throw TDTWAVE2DEXCEPTION("Column sharing intialization failure\n");
   }
 
   temperature = _temperature;
@@ -423,35 +371,23 @@ double
 Global::likelihood_mpi(double &log_normalization)
 {
   if (communicator == MPI_COMM_NULL || mpi_rank < 0 || mpi_size < 0) {
-    throw TDT2DWAVEEXCEPTION("MPI Parameters unset\n");
+    throw TDTWAVE2DEXCEPTION("MPI Parameters unset\n");
   }
   
   if (!posteriork) {
     
-    cEarth1D earth1d;
-
-    //
-    // Setup layer thicknesses
-    //
-    earth1d.conductivity.resize(image->rows);
-    earth1d.thickness.resize(image->rows - 1);
-    
-    for (int i = 0; i < (image->rows - 1); i ++) {
-      earth1d.thickness[i] = image->layer_thickness[i];
-    }
-
     //
     // Get tree model wavelet coefficients
     //
-    memset(image->conductivity, 0, sizeof(double) * size);
-    if (wavetree2d_sub_map_to_array(wt, image->conductivity, size) < 0) {
-      throw TDT2DWAVEEXCEPTION("Failed to map model to array\n");
+    memset(image->image, 0, sizeof(double) * size);
+    if (wavetree2d_sub_map_to_array(wt, image->image, size) < 0) {
+      throw TDTWAVE2DEXCEPTION("Failed to map model to array\n");
     }
 
     //
     // Inverse wavelet transform
     //
-    if (generic_lift_inverse2d(image->conductivity,
+    if (generic_lift_inverse2d(image->image,
 			       width,
 			       height,
 			       width,
@@ -459,7 +395,7 @@ Global::likelihood_mpi(double &log_normalization)
 			       hwaveletf,
 			       vwaveletf,
 			       1) < 0) {
-      throw TDT2DWAVEEXCEPTION("Failed to do inverse transform on coefficients\n");
+      throw TDTWAVE2DEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
 
     double sum = 0.0;
@@ -475,19 +411,19 @@ Global::likelihood_mpi(double &log_normalization)
     double total;
     
     if (MPI_Reduce(&local_log_normalization, &total, 1, MPI_DOUBLE, MPI_SUM, 0, communicator) != MPI_SUCCESS) {
-      throw TDT2DWAVEEXCEPTION("Likelihood failed in reducing\n");
+      throw TDTWAVE2DEXCEPTION("Likelihood failed in reducing\n");
     }
     if (MPI_Bcast(&total, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-      throw TDT2DWAVEEXCEPTION("Likelihood failed in broadcast\n");
+      throw TDTWAVE2DEXCEPTION("Likelihood failed in broadcast\n");
     }
 
     log_normalization = total;
     
     if (MPI_Reduce(&sum, &total, 1, MPI_DOUBLE, MPI_SUM, 0, communicator) != MPI_SUCCESS) {
-      throw TDT2DWAVEEXCEPTION("Likelihood failed in reducing\n");
+      throw TDTWAVE2DEXCEPTION("Likelihood failed in reducing\n");
     }
     if (MPI_Bcast(&total, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-      throw TDT2DWAVEEXCEPTION("Likelihood failed in broadcast\n");
+      throw TDTWAVE2DEXCEPTION("Likelihood failed in broadcast\n");
     }
 
 
@@ -643,7 +579,7 @@ void
 Global::update_residual_covariance()
 {
   double *p = last_valid_residual;
-  int nobservations = 0;
+  int nobservations = 0; //TODO
   for (int k = 0; k < nobservations; k ++) {
 
     cov_n ++;

@@ -1,11 +1,14 @@
 
+#include <math.h>
+
 extern "C" {
 #include "slog.h"
 };
 
 #include "value.hpp"
 
-#include "aemutil.hpp"
+#include "tdtwave2dexception.hpp"
+#include "tdtwave2dutil.hpp"
 
 Value::Value(Global &_global) :
   global(_global),
@@ -177,10 +180,10 @@ Value::initialize_mpi(MPI_Comm _communicator)
   MPI_Comm_dup(_communicator, &communicator);
 
   if (MPI_Comm_size(communicator, &mpi_size) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDTWAVE2DEXCEPTION("MPI Failure\n");
   }
   if (MPI_Comm_rank(communicator, &mpi_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDTWAVE2DEXCEPTION("MPI Failure\n");
   }
 }
 
@@ -273,19 +276,19 @@ Value::communicate_value_location_and_value(int &valid_proposal,
   if (communicator != MPI_COMM_NULL) {
 
     if (MPI_Bcast(&valid_proposal, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broadcast valid proposal\n");
+      throw TDTWAVE2DEXCEPTION("Failed to broadcast valid proposal\n");
     }
     
     if (valid_proposal) {
 
       if (MPI_Bcast(&value_idx, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast index\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broadcast index\n");
       }
       if (MPI_Bcast(&value_depth, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast depth\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broadcast depth\n");
       }
       if (MPI_Bcast(&value, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast value\n");
+	throw TDTWAVE2DEXCEPTION("Failed to broadcast value\n");
       }
       
     }
@@ -360,7 +363,7 @@ Value::communicate_acceptance(bool &accept_proposal)
     }
 
     if (MPI_Bcast(&ta, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broadcast acceptted\n");
+      throw TDTWAVE2DEXCEPTION("Failed to broadcast acceptted\n");
     }
 
     if (mpi_rank != 0) {

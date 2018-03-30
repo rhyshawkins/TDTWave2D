@@ -10,23 +10,19 @@
 tdtwave2dimage::tdtwave2dimage() :
   rows(-1),
   columns(-1),
-  depth(0.0),
   image(nullptr)
 {
 }
 
-tdtwave2dimage::tdtwave2dimage(int _rows, int _columns, double _depth, double const_image) :
+tdtwave2dimage::tdtwave2dimage(int _rows, int _columns, double const_image) :
   rows(_rows),
   columns(_columns),
-  depth(_depth),
   image(new double[rows * columns])
 {
   int s = rows * columns;
   for (int i = 0; i < s; i ++) {
     image[i] = const_image;
   }
-
-  update_layer_thickness();
 }
 
 tdtwave2dimage::~tdtwave2dimage()
@@ -38,7 +34,6 @@ bool
 tdtwave2dimage::load(const char *filename)
 {
   int nrows, ncols;
-  double ndepth;
   
   FILE *fp = fopen(filename, "r");
   if (fp == NULL) {
@@ -55,7 +50,6 @@ tdtwave2dimage::load(const char *filename)
 
   rows = nrows;
   columns = ncols;
-  depth = ndepth;
 
   image = new double[rows * columns];
 
@@ -67,8 +61,6 @@ tdtwave2dimage::load(const char *filename)
       }
     }
   }
-
-  update_layer_thickness();
   
   fclose(fp);
   return true;

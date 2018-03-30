@@ -1,21 +1,21 @@
 #pragma once
-#ifndef tdt2dwaveexception_hpp
-#define tdt2dwaveexception_hpp
+#ifndef tdtwave2dexception_hpp
+#define tdtwave2dexception_hpp
 
 #include <exception>
 
-#define TDT2DWAVEEXCEPTION(fmt, ...) tdt2dwaveexception(__FILE__, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)
+#define TDTWAVE2DEXCEPTION(fmt, ...) tdtwave2dexception(__FILE__, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)
 
-class tdt2dwaveexception : public std::exception {
+class tdtwave2dexception : public std::exception {
 public:
 
   
-  tdt2dwaveexception(const char *srcfile,
+  tdtwave2dexception(const char *srcfile,
 		     const char *function,
 		     int lineno,
 		     const char *fmt, ...);
-  ~tdt2dwaveexception();
+  ~tdtwave2dexception();
   
 };
 
-#endif // tdt2dwaveexception_hpp
+#endif // tdtwave2dexception_hpp
