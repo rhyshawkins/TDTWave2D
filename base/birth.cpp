@@ -1,11 +1,14 @@
 
+#include <math.h>
+
 extern "C" {
 #include "slog.h"
 };
 
 #include "birth.hpp"
 
-#include "aemutil.hpp"
+#include "tdtwave2dexception.hpp"
+#include "tdtwave2dutil.hpp"
 
 Birth::Birth(Global &_global) :
   global(_global),
@@ -200,10 +203,10 @@ Birth::initialize_mpi(MPI_Comm _communicator)
   MPI_Comm_dup(_communicator, &communicator);
 
   if (MPI_Comm_size(communicator, &mpi_size) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
   }
   if (MPI_Comm_rank(communicator, &mpi_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
   }
 }
 
@@ -303,20 +306,20 @@ Birth::communicate_birth_location_and_value(int &birth_valid,
   if (communicator != MPI_COMM_NULL) {
 
     if (MPI_Bcast(&birth_valid, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broadcast birth valid\n");
+      throw TDT2DWAVEEXCEPTION("Failed to broadcast birth valid\n");
     }
     
     if (birth_valid) {
       if (MPI_Bcast(&birth_idx, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast birth index\n");
+	throw TDT2DWAVEEXCEPTION("Failed to broadcast birth index\n");
       }
 
       if (MPI_Bcast(&birth_depth, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast birth depth\n");
+	throw TDT2DWAVEEXCEPTION("Failed to broadcast birth depth\n");
       }
 
       if (MPI_Bcast(&birth_value, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast birth value\n");
+	throw TDT2DWAVEEXCEPTION("Failed to broadcast birth value\n");
       }
     }
   }
@@ -436,7 +439,7 @@ Birth::communicate_acceptance(bool &accept_proposal)
     }
 
     if (MPI_Bcast(&ta, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broadcast accept proposal\n");
+      throw TDT2DWAVEEXCEPTION("Failed to broadcast accept proposal\n");
     }
 
     if (mpi_rank != 0) {

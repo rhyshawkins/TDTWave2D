@@ -1,21 +1,21 @@
 #pragma once
-#ifndef aemexception_hpp
-#define aemexception_hpp
+#ifndef tdt2dwaveexception_hpp
+#define tdt2dwaveexception_hpp
 
 #include <exception>
 
-#define AEMEXCEPTION(fmt, ...) aemexception(__FILE__, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)
+#define TDT2DWAVEEXCEPTION(fmt, ...) tdt2dwaveexception(__FILE__, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)
 
-class aemexception : public std::exception {
+class tdt2dwaveexception : public std::exception {
 public:
 
   
-  aemexception(const char *srcfile,
-		const char *function,
-		int lineno,
-		const char *fmt, ...);
-  ~aemexception();
+  tdt2dwaveexception(const char *srcfile,
+		     const char *function,
+		     int lineno,
+		     const char *fmt, ...);
+  ~tdt2dwaveexception();
   
 };
 
-#endif // aemexception_hpp
+#endif // tdt2dwaveexception_hpp

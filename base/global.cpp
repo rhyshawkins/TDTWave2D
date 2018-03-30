@@ -1,6 +1,5 @@
 
-#include "aemexception.hpp"
-#include "aemobservations.hpp"
+#include "tdtwave2dexception.hpp"
 
 #include "global.hpp"
 
@@ -92,11 +91,11 @@ Global::Global(const char *filename,
 {
   if (degreex < 0 || degreex >= 16 ||
       degreey < 0 || degreey >= 16) {
-    throw AEMEXCEPTION("Degree(s) out of range: %d x %d\n", degreex, degreey);
+    throw TDT2DWAVEEXCEPTION("Degree(s) out of range: %d x %d\n", degreex, degreey);
   }
   
   if (depth <= 0.0) {
-    throw AEMEXCEPTION("Depth out of range\n");
+    throw TDT2DWAVEEXCEPTION("Depth out of range\n");
   }
 
   if (!posteriork) {
@@ -136,14 +135,14 @@ Global::Global(const char *filename,
     for (auto &h : hierarchical_files) {
       hierarchicalmodel *m = hierarchicalmodel::load(h.c_str());
       if (m == nullptr) {
-	throw AEMEXCEPTION("Failed to create/load hierarchical model");
+	throw TDT2DWAVEEXCEPTION("Failed to create/load hierarchical model");
       }
       
       lambda.push_back(m);
     }
     
     if (forwardmodel.size() != observations->points[0].responses.size()) {
-      throw AEMEXCEPTION("Mismatch in STM and responses size: %d != %d\n",
+      throw TDT2DWAVEEXCEPTION("Mismatch in STM and responses size: %d != %d\n",
 			 (int)forwardmodel.size(),
 			 (int)observations->points[0].responses.size());
     }
@@ -151,7 +150,7 @@ Global::Global(const char *filename,
 
   wt = wavetree2d_sub_create(degreex, degreey, 0.0);
   if (wt == NULL) {
-    throw AEMEXCEPTION("Failed to create wavetree\n");
+    throw TDT2DWAVEEXCEPTION("Failed to create wavetree\n");
   }
 
   width = wavetree2d_sub_get_width(wt);
@@ -164,7 +163,7 @@ Global::Global(const char *filename,
 
   if (!posteriork) {
     if ((int)observations->points.size() != width) {
-      throw AEMEXCEPTION("Image size mismatch to observations: %d != %d\n",
+      throw TDT2DWAVEEXCEPTION("Image size mismatch to observations: %d != %d\n",
     			 width,
     			 (int)observations->points.size());
     }
@@ -198,12 +197,12 @@ Global::Global(const char *filename,
   
   if (initial_model == NULL) {
     if (wavetree2d_sub_initialize(wt, log(DEFAULT_CONDUCTIVITY)) < 0) {
-      throw AEMEXCEPTION("Failed to initialize wavetree\n");
+      throw TDT2DWAVEEXCEPTION("Failed to initialize wavetree\n");
     }
   } else {
 
     if (wavetree2d_sub_load_promote(wt, initial_model) < 0) {
-      throw AEMEXCEPTION("Failed to load initial model: %s\n", initial_model);
+      throw TDT2DWAVEEXCEPTION("Failed to load initial model: %s\n", initial_model);
     }
 
     INFO("Loaded model with %d coefficients\n", wavetree2d_sub_coeff_count(wt));
@@ -221,7 +220,7 @@ Global::Global(const char *filename,
 					      degreey,
 					      kmax);
   if (hnk == NULL) {
-    throw AEMEXCEPTION("Failed to create hnk table\n");
+    throw TDT2DWAVEEXCEPTION("Failed to create hnk table\n");
   }
 
   //
@@ -229,7 +228,7 @@ Global::Global(const char *filename,
   //
   ch = chain_history_create(CHAIN_STEPS);
   if (ch == nullptr) {
-    throw AEMEXCEPTION("Failed to create chain history\n");
+    throw TDT2DWAVEEXCEPTION("Failed to create chain history\n");
   }
 
   
@@ -241,7 +240,7 @@ Global::Global(const char *filename,
 					    global_indextocoord,
 					    wt);
   if (coeff_hist == NULL) {
-    throw AEMEXCEPTION("Failed to create coefficient histogram\n");
+    throw TDT2DWAVEEXCEPTION("Failed to create coefficient histogram\n");
   }
 
   //
@@ -250,7 +249,7 @@ Global::Global(const char *filename,
   if (prior_file != nullptr) {
     proposal = wavetree_pp_load(prior_file, seed, coeff_hist);
     if (proposal == NULL) {
-      throw AEMEXCEPTION("Failed to load proposal file\n");
+      throw TDT2DWAVEEXCEPTION("Failed to load proposal file\n");
     }
     
     for (int i = 0; i < ncoeff; i ++) {
@@ -258,7 +257,7 @@ Global::Global(const char *filename,
       
       int ii, ij;
       if (wavetree2d_sub_2dindices(wt, i, &ii, &ij) < 0) {
-	throw AEMEXCEPTION("Failed to get 2d indices\n");
+	throw TDT2DWAVEEXCEPTION("Failed to get 2d indices\n");
       }
       
       double vmin, vmax;
@@ -270,26 +269,26 @@ Global::Global(const char *filename,
 				    0.0,
 				    &vmin,
 				    &vmax) < 0) {
-	throw AEMEXCEPTION("Failed to get coefficient range\n");
+	throw TDT2DWAVEEXCEPTION("Failed to get coefficient range\n");
       }
       
       if (coefficient_histogram_set_range(coeff_hist, 
 					  i,
 					  vmin,
 					  vmax) < 0) {
-	throw AEMEXCEPTION("Failed to set coefficient histogram range\n");
+	throw TDT2DWAVEEXCEPTION("Failed to set coefficient histogram range\n");
       }
     }
   }
     
   hwaveletf = wavelet_inverse_function_from_id(hwavelet);
   if (hwaveletf == nullptr) {
-    throw AEMEXCEPTION("Invalid horizontal wavelet %d\n", hwavelet);
+    throw TDT2DWAVEEXCEPTION("Invalid horizontal wavelet %d\n", hwavelet);
   }
 
   vwaveletf = wavelet_inverse_function_from_id(vwavelet);
   if (vwaveletf == nullptr) {
-    throw AEMEXCEPTION("Invalid vertical wavelet %d\n", vwavelet);
+    throw TDT2DWAVEEXCEPTION("Invalid vertical wavelet %d\n", vwavelet);
   }
 
 }
@@ -303,24 +302,12 @@ Global::likelihood(double &log_normalization)
 {
   if (!posteriork) {
     
-    cEarth1D earth1d;
-
-    //
-    // Setup layer thicknesses
-    //
-    earth1d.conductivity.resize(image->rows);
-    earth1d.thickness.resize(image->rows - 1);
-    
-    for (int i = 0; i < (image->rows - 1); i ++) {
-      earth1d.thickness[i] = image->layer_thickness[i];
-    }
-    
     //
     // Get tree model wavelet coefficients
     //
-    memset(image->conductivity, 0, sizeof(double) * size);
+    memset(image->, 0, sizeof(double) * size);
     if (wavetree2d_sub_map_to_array(wt, image->conductivity, size) < 0) {
-      throw AEMEXCEPTION("Failed to map model to array\n");
+      throw TDT2DWAVEEXCEPTION("Failed to map model to array\n");
     }
 
     //
@@ -334,7 +321,7 @@ Global::likelihood(double &log_normalization)
 			       hwaveletf,
 			       vwaveletf,
 			       1) < 0) {
-      throw AEMEXCEPTION("Failed to do inverse transform on coefficients\n");
+      throw TDT2DWAVEEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
 
     double sum = 0.0;
@@ -345,109 +332,9 @@ Global::likelihood(double &log_normalization)
     for (int i = 0; i < image->columns; i ++) {
 
       residual_offset = i * residuals_per_column;
-      aempoint &p = observations->points[i];
-      //
-      // Construct geometry
-      //
-      cTDEmGeometry geometry(p.tx_height,
-			     p.tx_roll,
-			     p.tx_pitch,
-			     p.tx_yaw,
-			     p.txrx_dx,
-			     p.txrx_dy,
-			     p.txrx_dz,
-			     p.rx_roll,
-			     p.rx_pitch,
-			     p.rx_yaw);
-      //
-      // Copy image column to earth model, our model is in log of conductivity so here we use exp
-      //
-      for (int j = 0; j < image->rows; j ++) {
-	earth1d.conductivity[j] = exp(image->conductivity[j * image->columns + i]);
-      }
       
-      double point_sum = 0.0;
+
       
-      for (int k = 0; k < (int)forwardmodel.size(); k ++) {
-	
-	cTDEmSystem *f = forwardmodel[k];
-	hierarchicalmodel *h = lambda[k];
-	double *time = forwardmodel_time[k];
-	
-	const aemresponse &r = p.responses[k];
-	
-	cTDEmResponse response;
-	
-	f->forwardmodel(geometry,
-			earth1d,
-			response);
-	
-	switch (r.d) {
-	case aemresponse::DIRECTION_X:
-	  if (r.response.size() != response.SX.size()) {
-	    throw AEMEXCEPTION("Size mismatch in X response (%d != %d)\n", (int)r.response.size(), (int)response.SX.size());
-	  }
-	  for (int l = 0; l < (int)response.SX.size(); l ++) {
-	    residual[residual_offset + l] = r.response[l] - response.SX[l];
-	  }
-	  point_sum +=
-	    h->nll(r.response,
-		   time,
-		   residual + residual_offset,
-		   lambda_scale,
-		   residual_normed + residual_offset,
-		   log_normalization);
-
-	  residual_offset += response.SX.size();
-	  break;
-	  
-	case aemresponse::DIRECTION_Y:
-	  if (r.response.size() != response.SY.size()) {
-	    throw AEMEXCEPTION("Size mismatch in Y response (%d != %d)\n", (int)r.response.size(), (int)response.SY.size());
-	  }
-
-	  for (int l = 0; l < (int)response.SY.size(); l ++) {
-	    residual[residual_offset + l] = r.response[l] - response.SY[l];
-	  }
-	  point_sum +=
-	    h->nll(r.response,
-		   time,
-		   residual + residual_offset,
-		   lambda_scale,
-		   residual_normed + residual_offset,
-		   log_normalization);
-
-	  residual_offset += response.SY.size();
-	  break;
-	  
-	case aemresponse::DIRECTION_Z:
-	  if (r.response.size() != response.SZ.size()) {
-	    throw AEMEXCEPTION("Size mismatch in Z response (%d != %d)\n",
-			       (int)r.response.size(),
-			       (int)response.SZ.size());
-	  }
-	  for (int l = 0; l < (int)response.SZ.size(); l ++) {
-	    residual[residual_offset + l] = r.response[l] - response.SZ[l];
-	  }
-	  point_sum +=
-	    h->nll(r.response,
-		   time,
-		   residual + residual_offset,
-		   lambda_scale,
-		   residual_normed + residual_offset,
-		   log_normalization);
-
-	  residual_offset += response.SZ.size();
-	  break;
-	  
-	default:
-	  throw AEMEXCEPTION("Unhandled direction\n");
-	}
-	
-	
-      }
-
-      sum += point_sum;
     }
     
     return sum;
@@ -476,23 +363,6 @@ Global::hierarchical_likelihood(double proposed_lambda_scale,
     for (int i = 0; i < image->columns; i ++) {
       
       residual_offset = i * residuals_per_column;
-      aempoint &p = observations->points[i];
-      
-      for (int k = 0; k < (int)forwardmodel.size(); k ++) {
-	
-	hierarchicalmodel *h = lambda[k];
-	double *time = forwardmodel_time[k];
-	const aemresponse &r = p.responses[k];
-	
-	sum += h->nll(r.response,
-		      time,
-		      last_valid_residual + residual_offset,
-		      proposed_lambda_scale,
-		      residual_normed + residual_offset,
-		      log_normalization);
-
-	residual_offset += r.response.size();
-      }
     }
 
     return sum;
@@ -508,11 +378,11 @@ Global::initialize_mpi(MPI_Comm _communicator, double _temperature)
   communicator = _communicator;
 
   if (MPI_Comm_size(communicator, &mpi_size) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
   }
   
   if (MPI_Comm_rank(communicator, &mpi_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
   }
 
   column_offsets = new int[mpi_size];
@@ -543,7 +413,7 @@ Global::initialize_mpi(MPI_Comm _communicator, double _temperature)
   }
 
   if (column_offsets[mpi_size - 1] + column_sizes[mpi_size - 1] != image->columns) {
-    throw AEMEXCEPTION("Column sharing intialization failure\n");
+    throw TDT2DWAVEEXCEPTION("Column sharing intialization failure\n");
   }
 
   temperature = _temperature;
@@ -553,7 +423,7 @@ double
 Global::likelihood_mpi(double &log_normalization)
 {
   if (communicator == MPI_COMM_NULL || mpi_rank < 0 || mpi_size < 0) {
-    throw AEMEXCEPTION("MPI Parameters unset\n");
+    throw TDT2DWAVEEXCEPTION("MPI Parameters unset\n");
   }
   
   if (!posteriork) {
@@ -575,7 +445,7 @@ Global::likelihood_mpi(double &log_normalization)
     //
     memset(image->conductivity, 0, sizeof(double) * size);
     if (wavetree2d_sub_map_to_array(wt, image->conductivity, size) < 0) {
-      throw AEMEXCEPTION("Failed to map model to array\n");
+      throw TDT2DWAVEEXCEPTION("Failed to map model to array\n");
     }
 
     //
@@ -589,7 +459,7 @@ Global::likelihood_mpi(double &log_normalization)
 			       hwaveletf,
 			       vwaveletf,
 			       1) < 0) {
-      throw AEMEXCEPTION("Failed to do inverse transform on coefficients\n");
+      throw TDT2DWAVEEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
 
     double sum = 0.0;
@@ -600,124 +470,24 @@ Global::likelihood_mpi(double &log_normalization)
 
       residual_offset = i * residuals_per_column;
       
-      aempoint &p = observations->points[i];
-
-      //
-      // Construct geometry
-      //
-      cTDEmGeometry geometry(p.tx_height,
-			     p.tx_roll,
-			     p.tx_pitch,
-			     p.tx_yaw,
-			     p.txrx_dx,
-			     p.txrx_dy,
-			     p.txrx_dz,
-			     p.rx_roll,
-			     p.rx_pitch,
-			     p.rx_yaw);
-      //
-      // Copy image column to earth model, our model is in log of conductivity so here we use exp
-      //
-      for (int j = 0; j < image->rows; j ++) {
-	earth1d.conductivity[j] = exp(image->conductivity[j * image->columns + i]);
-      }
-      
-      double point_sum = 0.0;
-      for (int k = 0; k < (int)forwardmodel.size(); k ++) {
-	
-	cTDEmSystem *f = forwardmodel[k];
-	hierarchicalmodel *h = lambda[k];
-	double *time = forwardmodel_time[k];
-	const aemresponse &r = p.responses[k];
-	
-	cTDEmResponse response;
-	
-	f->forwardmodel(geometry,
-			earth1d,
-			response);
-	
-	switch (r.d) {
-	case aemresponse::DIRECTION_X:
-	  if (r.response.size() != response.SX.size()) {
-	    throw AEMEXCEPTION("Size mismatch in X response\n");
-	  }
-	  for (int l = 0; l < (int)response.SX.size(); l ++) {
-	    residual[residual_offset + l] = r.response[l] - response.SX[l];
-	  }
-	  point_sum +=
-	    h->nll(r.response,
-		   time,
-		   residual + residual_offset,
-		   lambda_scale,
-		   residual_normed + residual_offset,
-		   local_log_normalization);
-
-	  residual_offset += response.SX.size();
-	  break;
-	  
-	case aemresponse::DIRECTION_Y:
-	  if (r.response.size() != response.SY.size()) {
-	    throw AEMEXCEPTION("Size mismatch in Y response\n");
-	  }
-	  for (int l = 0; l < (int)response.SY.size(); l ++) {
-	    residual[residual_offset + l] = r.response[l] - response.SY[l];
-	  }
-	  point_sum +=
-	    h->nll(r.response,
-		   time,
-		   residual + residual_offset,
-		   lambda_scale,
-		   residual_normed + residual_offset,
-		   local_log_normalization);
-
-	  residual_offset += response.SY.size();
-	  break;
-	  
-	case aemresponse::DIRECTION_Z:
-	  if (r.response.size() != response.SZ.size()) {
-	    throw AEMEXCEPTION("Size mismatch in Z response (%d != %d)\n", (int)r.response.size(), (int)response.SZ.size());
-	  }
-	  for (int l = 0; l < (int)response.SY.size(); l ++) {
-	    residual[residual_offset + l] = r.response[l] - response.SZ[l];
-	  }
-	  point_sum +=
-	    h->nll(r.response,
-		   time,
-		   residual + residual_offset,
-		   lambda_scale,
-		   residual_normed + residual_offset,
-		   local_log_normalization);
-
-	  residual_offset += response.SZ.size();
-	  break;
-	  
-	default:
-	  throw AEMEXCEPTION("Unhandled direction\n");
-	}
-	
-	
-      }
-      
-      sum += point_sum;
-	
     }
 
     double total;
     
     if (MPI_Reduce(&local_log_normalization, &total, 1, MPI_DOUBLE, MPI_SUM, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Likelihood failed in reducing\n");
+      throw TDT2DWAVEEXCEPTION("Likelihood failed in reducing\n");
     }
     if (MPI_Bcast(&total, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Likelihood failed in broadcast\n");
+      throw TDT2DWAVEEXCEPTION("Likelihood failed in broadcast\n");
     }
 
     log_normalization = total;
     
     if (MPI_Reduce(&sum, &total, 1, MPI_DOUBLE, MPI_SUM, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Likelihood failed in reducing\n");
+      throw TDT2DWAVEEXCEPTION("Likelihood failed in reducing\n");
     }
     if (MPI_Bcast(&total, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Likelihood failed in broadcast\n");
+      throw TDT2DWAVEEXCEPTION("Likelihood failed in broadcast\n");
     }
 
 
@@ -873,8 +643,8 @@ void
 Global::update_residual_covariance()
 {
   double *p = last_valid_residual;
-
-  for (int k = 0; k < (int)(observations->points.size()); k ++) {
+  int nobservations = 0;
+  for (int k = 0; k < nobservations; k ++) {
 
     cov_n ++;
     

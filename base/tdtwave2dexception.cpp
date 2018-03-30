@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "aemexception.hpp"
+#include "tdt2dwaveexception.hpp"
 
 extern "C" {
   #include "slog.h"
 };
 
-aemexception::aemexception(const char *srcfile,
+tdt2dwaveexception::tdt2dwaveexception(const char *srcfile,
 			   const char *function,
 			   int lineno,
 			   const char *fmt, ...)
@@ -26,6 +26,6 @@ aemexception::aemexception(const char *srcfile,
   
 }
 
-aemexception::~aemexception()
+tdt2dwaveexception::~tdt2dwaveexception()
 {
 }

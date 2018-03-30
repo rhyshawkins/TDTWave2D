@@ -24,14 +24,7 @@ extern "C" {
 };
 
 #include "rng.hpp"
-#include "aemimage.hpp"
-#include "aemobservations.hpp"
 #include "hierarchicalmodel.hpp"
-
-#include "tdemsystem.h"
-#include "general_types.h"
-
-extern const double DEFAULT_CONDUCTIVITY;
 
 class Global {
 public:
@@ -47,13 +40,11 @@ public:
   };
 
   Global(const char *filename,
-	 const std::vector<std::string> &stm_files,
 	 const char *initial_model,
 	 const char *prior_file,
+	 const char *hierarchical_prior_file,
 	 int degreex,
 	 int degreey,
-	 double depth,
-	 const std::vector<std::string> &hierarchical_files,
 	 int seed,
 	 int kmax,
 	 bool posteriork,
@@ -118,12 +109,6 @@ public:
   int degreex;
   int degreey;
 
-  std::vector<cTDEmSystem*> forwardmodel;
-  std::vector<double*> forwardmodel_time;
-  
-  aemobservations *observations;
-  aemimage *image;
-
   double *model;
   double *workspace;
 
@@ -151,7 +136,7 @@ public:
   int size;
   int ncoeff;
 
-  std::vector<hierarchicalmodel*> lambda;
+  hierarchicalmodel* lambda;
   double lambda_scale;
   
   double current_likelihood;

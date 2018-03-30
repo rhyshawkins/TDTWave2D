@@ -1,11 +1,14 @@
 
+#include <math.h>
+
 extern "C" {
 #include "slog.h"
 };
 
 #include "death.hpp"
 
-#include "aemutil.hpp"
+#include "tdtwave2dexception.hpp"
+#include "tdtwave2dutil.hpp"
 
 Death::Death(Global &_global) :
   global(_global),
@@ -194,10 +197,10 @@ Death::initialize_mpi(MPI_Comm _communicator)
   MPI_Comm_dup(_communicator, &communicator);
 
   if (MPI_Comm_size(communicator, &mpi_size) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
   }
   if (MPI_Comm_rank(communicator, &mpi_rank) != MPI_SUCCESS) {
-    throw AEMEXCEPTION("MPI Failure\n");
+    throw TDT2DWAVEEXCEPTION("MPI Failure\n");
   }
 }
 
@@ -249,15 +252,15 @@ Death::communicate_death_location(int &death_valid,
   if (communicator != MPI_COMM_NULL) {
 
     if (MPI_Bcast(&death_valid, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broadcast death valid\n");
+      throw TDT2DWAVEEXCEPTION("Failed to broadcast death valid\n");
     }
     
     if (death_valid) {
       if (MPI_Bcast(&death_idx, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast death index\n");
+	throw TDT2DWAVEEXCEPTION("Failed to broadcast death index\n");
       }
       if (MPI_Bcast(&death_depth, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-	throw AEMEXCEPTION("Failed to broadcast death depth\n");
+	throw TDT2DWAVEEXCEPTION("Failed to broadcast death depth\n");
       }
     }
   }
@@ -407,7 +410,7 @@ Death::communicate_acceptance(bool &accept_proposal)
     }
 
     if (MPI_Bcast(&ta, 1, MPI_INT, 0, communicator) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to broadcast acceptance\n");
+      throw TDT2DWAVEEXCEPTION("Failed to broadcast acceptance\n");
     }
 
     if (mpi_rank != 0) {
