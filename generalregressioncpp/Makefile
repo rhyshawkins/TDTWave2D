@@ -5,16 +5,30 @@ CXXFLAGS=-c -g -Wall -I../base
 CXXFLAGS+=-O3
 
 BASEOBJS = \
-	../base/tdtwave2dinvert \
-	../base/generalvoronois2exception.o \
-	../base/hierarchical_model.o \
-	../base/pathutil.o \
-	../base/prior.o \
+	../base/birth.o \
+	../base/constants.o \
+	../base/death.o \
+	../base/global.o \
+	../base/hierarchical.o \
+	../base/hierarchicalprior.o \
+	../base/ptexchange.o \
+	../base/resample.o \
 	../base/rng.o \
-	../base/global.o
+	../base/tdtwave2dexception.o \
+	../base/tdtwave2dimage.o \
+	../base/tdtwave2dutil.o \
+	../base/value.o
 
-LIBS = -L../libraries/log -llog \
-	$(shell gsl-config --libs)
+BASELIB=../../TDTbase
+LIBS = -L$(BASELIB)/hnk -lhnk \
+	-L$(BASELIB)/tracking -ltracking \
+	-L$(BASELIB)/log -llog \
+	-L$(BASELIB)/wavetree -lwavetree \
+	-L$(BASELIB)/sphericalwavelet -lsphericalwavelet \
+	-L$(BASELIB)/oset -loset \
+	-L$(BASELIB)/wavelet -lwavelet \
+	$(shell gsl-config --libs) \
+	-lgmp
 
 TARGETOBJS = genericregression.o
 
@@ -30,14 +44,14 @@ genericregression.o : genericregression.cpp
 ../base/%.o : ../base/%.cpp
 	make -C ../base  $*.o
 
-mksyntheticregression : $(TARGETOBJS) $(BASEOBJS) ../mksyntheticobservations.o
-	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../mksyntheticobservations.o $(LIBS)
+mksyntheticregression : $(TARGETOBJS) $(BASEOBJS) ../base/mksyntheticobservations.o
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/mksyntheticobservations.o $(LIBS)
 
 regressiontdtwave2d : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert.o 
-	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert .o $(LIBS)
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert.o $(LIBS)
 
-regressiontdtwave2dpt : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvertpt.o 
-	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvertpt.o $(LIBS)
+regressiontdtwave2dpt : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert_pt.o 
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert_pt.o $(LIBS)
 
 clean :
 	rm -f $(TARGETS)

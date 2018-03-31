@@ -32,22 +32,20 @@ extern "C" {
 #include "ptexchange.hpp"
 #include "resample.hpp"
 
-#include "aemutil.hpp"
+#include "tdtwave2dutil.hpp"
+#include "tdtwave2dexception.hpp"
 
 #include "constants.hpp"
 
-static char short_options[] = "i:I:s:M:o:d:l:D:t:S:F:H:L:p:k:B:Pw:W:v:c:T:m:e:rU:R:h";
+static char short_options[] = "i:I:M:o:d:l:t:S:F:H:L:p:k:B:Pw:W:v:c:T:m:e:rU:R:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"initial", required_argument, 0, 'I'},
-  {"stm", required_argument, 0, 's'},
   {"prior-file", required_argument, 0, 'M'},
   {"output", required_argument, 0, 'o'},
   
   {"degree-depth", required_argument, 0, 'd'},
   {"degree-lateral", required_argument, 0, 'l'},
-
-  {"depth", required_argument, 0, 'D'},
 
   {"total", required_argument, 0, 't'},
   {"seed", required_argument, 0, 'S'},
@@ -95,8 +93,7 @@ int main(int argc, char *argv[])
   //
   char *input_obs;
   char *initial_model;
-  std::vector<std::string> stm_files;
-  std::vector<std::string> hierarchical_files;
+  char *hierarchical_file;
   char *prior_file;
   char *output_prefix;
 
@@ -148,7 +145,8 @@ int main(int argc, char *argv[])
   initial_model = nullptr;
   prior_file = nullptr;
   output_prefix = nullptr;
-
+  hierarchical_file = nullptr;
+  
   degreex = 10;
   degreey = 5;
 
@@ -201,10 +199,6 @@ int main(int argc, char *argv[])
       initial_model = optarg;
       break;
 
-    case 's':
-      stm_files.push_back(optarg);
-      break;
-
     case 'M':
       prior_file = optarg;
       break;
@@ -229,14 +223,6 @@ int main(int argc, char *argv[])
       }
       break;
 
-    case 'D':
-      depth = atof(optarg);
-      if (depth <= 0.0) {
-	fprintf(stderr, "error: depth must be greater than 0\n");
-	return -1;
-      }
-      break;
-      
     case 't':
       total = atoi(optarg);
       if (total < 1) {
@@ -258,7 +244,7 @@ int main(int argc, char *argv[])
       break;
 
     case 'H':
-      hierarchical_files.push_back(optarg);
+      hierarchical_file = optarg;
       break;
 
     case 'L':
@@ -388,11 +374,6 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  if (stm_files.size() == 0) {
-    ERROR("error: need at least on stm file\n");
-    return -1;
-  }
-
   if (prior_file == nullptr) {
     ERROR("error: required prior file parameter missing\n");
     return -1;
@@ -457,13 +438,11 @@ int main(int argc, char *argv[])
   }
 
   Global *global = new Global(input_obs,
-			      stm_files,
 			      initial_model_ptr,
 			      prior_file,
+			      hierarchical_file,
 			      degreex,
 			      degreey,
-			      depth,
-			      hierarchical_files,
 			      seed_base + mpi_rank*seed_mult,
 			      kmax,
 			      posteriork,
@@ -513,7 +492,7 @@ int main(int argc, char *argv[])
   MPI_Comm_rank(temperature_communicator, &temperature_rank);
   if (mpi_rank == 0) {
     if (temperature_rank != 0) {
-      throw AEMEXCEPTION("MPI Rank unexpected: %d != %d\n", mpi_rank, temperature_rank);
+      throw TDTWAVE2DEXCEPTION("MPI Rank unexpected: %d != %d\n", mpi_rank, temperature_rank);
     }
   }
 
@@ -546,7 +525,7 @@ int main(int argc, char *argv[])
       int resampled = resampler->step(resample_temperature);
 
       if (resampled < 0) {
-	throw AEMEXCEPTION("Failed to resample\n");
+	throw TDTWAVE2DEXCEPTION("Failed to resample\n");
       }
 
       if (resampled) {
@@ -597,7 +576,7 @@ int main(int argc, char *argv[])
     // Make sure we're all here
     //
     if (MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
-      throw AEMEXCEPTION("Failed to barrier\n");
+      throw TDTWAVE2DEXCEPTION("Failed to barrier\n");
     }
   
     double u;
@@ -815,7 +794,7 @@ int main(int argc, char *argv[])
     if (resample && resample_rate > 0 && ((i + 1) % resample_rate == 0)) {
       int resampled = resampler->step(resample_temperature);
       if (resampled < 0) {
-	throw AEMEXCEPTION("Failed to resample\n");
+	throw TDTWAVE2DEXCEPTION("Failed to resample\n");
       }
       
       if (resampled) {

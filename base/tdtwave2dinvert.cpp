@@ -80,8 +80,6 @@ int main(int argc, char *argv[])
   int degreex;
   int degreey;
 
-  double depth;
-
   int total;
   int seed;
 
@@ -108,8 +106,6 @@ int main(int argc, char *argv[])
 
   degreex = 10;
   degreey = 5;
-
-  depth = 500.0;
 
   total = 10000;
   seed = 983;
@@ -255,10 +251,9 @@ int main(int argc, char *argv[])
   Global global(input_obs,
 		initial_model,
 		prior_file,
+		hierarchical_model,
 		degreex,
 		degreey,
-		depth,
-		hierarchical_model,
 		seed,
 		kmax,
 		posteriork,

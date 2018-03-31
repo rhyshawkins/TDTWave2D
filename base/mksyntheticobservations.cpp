@@ -4,22 +4,17 @@
 
 #include <getopt.h>
 
-#include "aemobservations.hpp"
-#include "aemimage.hpp"
-#include "hierarchicalmodel.hpp"
-#include "aemutil.hpp"
+#include "genericinterface.hpp"
+#include "tdtwave2dimage.hpp"
+#include "tdtwave2dutil.hpp"
 
 #include "rng.hpp"
 
-#include "tdemsystem.h"
-#include "general_types.h"
-
-static char short_options[] = "i:I:S:o:O:N:s:h";
+static char short_options[] = "i:I:o:O:N:s:h";
 
 static struct option long_options[] = {
   {"input-image", required_argument, 0, 'i'},
-  {"input-path", required_argument, 0, 'I'},
-  {"input-stm", required_argument, 0, 'S'},
+  {"input-points", required_argument, 0, 'I'},
 
   {"output", required_argument, 0, 'o'},
   {"output-true", required_argument, 0, 'O'},
@@ -42,13 +37,12 @@ int main(int argc, char *argv[])
   int option_index;
 
   char *input_image;
-  char *input_path;
-
-  std::vector<std::string> input_stm;
-  std::vector<std::string> input_noise;
+  char *input_points;
 
   char *output_file;
   char *output_true;
+
+  double noise;
 
   int seed;
 
@@ -56,12 +50,14 @@ int main(int argc, char *argv[])
   // Defaults
   //
   input_image = nullptr;
-  input_path = nullptr;
+  input_points = nullptr;
 
   output_file = nullptr;
   output_true = nullptr;
 
   seed = 983;
+
+  noise = 1.0;
   
   
   while (true) {
@@ -78,11 +74,7 @@ int main(int argc, char *argv[])
       break;
 
     case 'I':
-      input_path = optarg;
-      break;
-
-    case 'S':
-      input_stm.push_back(optarg);
+      input_points = optarg;
       break;
 
     case 'o':
@@ -94,7 +86,11 @@ int main(int argc, char *argv[])
       break;
 
     case 'N':
-      input_noise.push_back(optarg);
+      noise = atof(optarg);
+      if (noise <= 0.0) {
+	fprintf(stderr, "error: noise must be positive\n");
+	return -1;
+      }
       break;
 
     case 's':
@@ -113,18 +109,8 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  if (input_path == nullptr) {
-    fprintf(stderr, "error: required input flight path parameter missing\n");
-    return -1;
-  }
-
-  if (input_stm.size() == 0) {
-    fprintf(stderr, "error: required input stm file parameter missing\n");
-    return -1;
-  }
-
-  if (input_noise.size() != input_stm.size()) {
-    fprintf(stderr, "error: not enough noise parameters for stm's\n");
+  if (input_points == nullptr) {
+    fprintf(stderr, "error: required input points parameter missing\n");
     return -1;
   }
 
@@ -133,159 +119,13 @@ int main(int argc, char *argv[])
     return -1;
   }
       
-  aemobservations obs(input_path);
 
-  aemimage image;
+  tdtwave2dimage image;
   if (!image.load(input_image)) {
     fprintf(stderr, "error: failed to load image file\n");
     return -1;
   }
 
-  if (image.columns != (int)obs.points.size()) {
-    fprintf(stderr, "error: mismatch between image columns and number of observations: %d %d\n",
-	    image.columns,
-	    (int)obs.points.size());
-    return -1;
-  }
-	    
-
-  std::vector<cTDEmSystem*> forwardmodel;
-  std::vector<double*> forwardmodel_time;
-  
-  for (auto &s : input_stm) {
-
-    cTDEmSystem *p = new cTDEmSystem(s);
-
-    forwardmodel.push_back(p);
-
-    double *centre_time = new double[p->WinSpec.size()];
-
-    int t = 0;
-    for (auto &w : p->WinSpec) {
-      centre_time[t] = (w.TimeLow + w.TimeHigh)/2.0;
-      t ++;
-    }
-
-    forwardmodel_time.push_back(centre_time);
-  }
-
-  std::vector<hierarchicalmodel*> noise;
-  std::vector<double> lambda;
-
-  for (auto &s : input_noise) {
-
-    hierarchicalmodel *h = hierarchicalmodel::load(s.c_str());
-    if (h == nullptr) {
-      fprintf(stderr, "error: failed to load hierarchical noise model\n");
-      return -1;
-    }
-
-    noise.push_back(h);
-  }
-  
-  cEarth1D earth1d;
-
-  earth1d.conductivity.resize(image.rows);
-  earth1d.thickness.resize(image.rows - 1);
-
-  for (int i = 0; i < (image.rows - 1); i ++) {
-    earth1d.thickness[i] = image.layer_thickness[i];
-  }
-
-  std::vector<aempoint>::iterator i;
-  int j;
-  for (i = obs.points.begin(), j = 0; i != obs.points.end(); i ++, j ++) {
-    printf("  Computing %6d\n", j);
-    
-    //
-    // Set conductivity from image, thicknesses already set outside of loop
-    //
-    for (int k = 0; k < image.rows; k ++) {
-      earth1d.conductivity[k] = image.conductivity[k * image.columns + j];
-    }
-
-    //
-    // Reset observations X, Z
-    //
-    aempoint &p = *i;
-
-    //
-    // Construct geometry
-    //
-    cTDEmGeometry geometry(p.tx_height,
-			   p.tx_roll,
-			   p.tx_pitch,
-			   p.tx_yaw,
-			   p.txrx_dx,
-			   p.txrx_dy,
-			   p.txrx_dz,
-			   p.rx_roll,
-			   p.rx_pitch,
-			   p.rx_yaw);
-
-    for (auto &f: forwardmodel) {
-
-      cTDEmResponse response;
-    
-      f->forwardmodel(geometry, earth1d, response);
-
-      //
-      // Add in the response
-      //
-      aemresponse r(aemresponse::DIRECTION_Z);
-
-      for (auto &i: response.SZ) {
-	r.response.push_back(i);
-      }
-
-      p.responses.push_back(r);
-    }
-  }
-
-  printf("  Done\n");
-
-  //
-  // Output true observations is required
-  //
-  if (output_true) {
-
-    if (!obs.save(output_true)) {
-      fprintf(stderr, "error: failed to save true observations\n");
-      return -1;
-    }
-  }
-
-  //
-  // Add the noise
-  //
-  Rng random(seed);
-    
-  for (auto &a: obs.points) {
-
-    int ni = 0;
-    
-    for (auto &r: a.responses) {
-
-      hierarchicalmodel *noisemodel = noise[ni];
-      double *time = forwardmodel_time[ni];
-      int di = 0;
-
-      for (auto &d: r.response) {
-	double t = time[di];
-
-	double sigma = noisemodel->noise(d, t, 1.0);
-	d = d + random.normal(sigma);
-	di ++;
-      }
-
-      ni ++;
-    }
-  }
-
-  if (!obs.save(output_file)) {
-    fprintf(stderr, "error: failed to save noisy observations\n");
-    return -1;
-  }
 
   return 0;
 }
@@ -298,8 +138,7 @@ static void usage(const char *pname)
           "where options is one or more of:\n"
           "\n"
 	  " -i|--input-image <filename>        Input true image\n"
-	  " -I|--input-path <filename>         Input flight path\n"
-	  " -S|--input-stm <filename>          Input Source Parameters file\n"
+	  " -I|--input-points <filename>         Input flight path\n"
 	  "\n"
 	  " -o|--output <filename>             Output file to write (required)\n"
 	  " -O|--output-true <filename>        Output true observations to file\n"
