@@ -9,21 +9,39 @@ struct observation {
   double lat;
   double value;
   double sigma;
+  int vidx;
 };
 
+struct model_bounds {
+  double minlon;
+  double minlat;
+  double maxlat;
+  double maxlon;
+};
+  
+static struct model_bounds bounds;
 static std::vector<struct observation> obs;
 
 extern "C" {
 
-  int gvs2_loaddata_(int *n,
-		     const char *filename,
-		     gvs2_addobservation_t addobs)
+  int tdtwave2d_loaddata_(int *n,
+			  const char *filename,
+			  int *width,
+			  int *height)
   {
     FILE *fp = fopen(filename, "r");
     if (fp == NULL) {
       return -1;
     }
 
+    if (fscanf(fp, "%lf %lf %lf %lf\n",
+	       &bounds.minlon,
+	       &bounds.minlat,
+	       &bounds.maxlon,
+	       &bounds.maxlat) != 4) {
+      return -1;
+    }
+	
     int nobs;
     if (fscanf(fp, "%d\n", &nobs) != 1) {
       return -1;
@@ -38,35 +56,36 @@ extern "C" {
 		 &obs[i].sigma) != 4) {
 	return -1;
       }
-
-      int n;
-      n = 1;
-      if (addobs(&n, &obs[i].lon, &obs[i].lat) < 0) {
-	return -1;
-      }
     }
 
     fclose(fp);
-    return 0;
+    return nobs;
   }
 
-  int gvs2_compute_prediction_(int *observation,
-			       int *npoints,
-			       const double *value,
-			       double *unused,
-			       double *prediction)
+  int tdtwave2d_compute_prediction_(int *observation,
+				    int *width,
+				    int *height,
+				    const double *image,
+				    double *unused,
+				    double *prediction)
   {
-    prediction[0] = value[0];
-    return 0;
+    if ((*observation) < (int)obs.size()) {
+      
+      prediction[0] = image[obs[*observation].vidx];
+			    
+      return 0;
+    }
+
+    return -1;
   }
 
-  int gvs2_compute_likelihood_(int *nobservation,
-			       double *hierarchical,
-			       double *predictions,
-			       double *residuals,
-			       double *unused,
-			       double *_like,
-			       double *_norm)
+  int tdtwave2d_compute_likelihood_(int *nobservation,
+				    double *hierarchical,
+				    double *predictions,
+				    double *residuals,
+				    double *unused,
+				    double *_like,
+				    double *_norm)
 
   {
     double sum = 0.0;
@@ -86,11 +105,11 @@ extern "C" {
     return 0;
   }
 
-  int gvs2_savedata_(int *n,
-		     const char *filename,
-		     double *noiselevel,
-		     int *nobservations,
-		     double *predictions)
+  int tdtwave2d_savedata_(int *n,
+			  const char *filename,
+			  double *noiselevel,
+			  int *nobservations,
+			  double *predictions)
   {
     FILE *fp;
 
@@ -99,6 +118,12 @@ extern "C" {
       return -1;
     }
 
+    fprintf(fp, "%15.9f %15.9f %15.9f %15.9f\n",
+	    bounds.minlon,
+	    bounds.minlat,
+	    bounds.maxlon,
+	    bounds.maxlat);
+	
     fprintf(fp, "%d\n", (int)obs.size());
     int i = 0;
     for (auto &o : obs) {

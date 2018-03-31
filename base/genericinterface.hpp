@@ -10,7 +10,9 @@ extern "C" {
   // on success and -1 on error
   //
   int tdtwave2d_loaddata_(int *n,
-			  const char *filename);
+			  const char *filename,
+			  int *width,
+			  int *height);
 
   //
   // For a single observation, compute the prediction given

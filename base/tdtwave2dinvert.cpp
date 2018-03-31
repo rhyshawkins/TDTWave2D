@@ -27,20 +27,17 @@ extern "C" {
 #include "value.hpp"
 #include "hierarchical.hpp"
 
-#include "aemutil.hpp"
+#include "tdtwave2dutil.hpp"
 
-static char short_options[] = "i:I:s:M:o:d:l:D:t:S:H:L:k:B:Pw:W:v:h";
+static char short_options[] = "i:I:M:o:d:l:t:S:H:L:k:B:Pw:W:v:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"initial", required_argument, 0, 'I'},
-  {"stm", required_argument, 0, 's'},
   {"prior-file", required_argument, 0, 'M'},
   {"output", required_argument, 0, 'o'},
   
   {"degree-depth", required_argument, 0, 'd'},
   {"degree-lateral", required_argument, 0, 'l'},
-
-  {"depth", required_argument, 0, 'D'},
 
   {"total", required_argument, 0, 't'},
   {"seed", required_argument, 0, 'S'},
@@ -76,8 +73,7 @@ int main(int argc, char *argv[])
   //
   char *input_obs;
   char *initial_model;
-  std::vector<std::string> stm_files;
-  std::vector<std::string> hierarchical_files;
+  char *hierarchical_model;
   char *prior_file;
   char *output_prefix;
 
@@ -151,10 +147,6 @@ int main(int argc, char *argv[])
       initial_model = optarg;
       break;
 
-    case 's':
-      stm_files.push_back(optarg);
-      break;
-
     case 'M':
       prior_file = optarg;
       break;
@@ -179,14 +171,6 @@ int main(int argc, char *argv[])
       }
       break;
 
-    case 'D':
-      depth = atof(optarg);
-      if (depth <= 0.0) {
-	fprintf(stderr, "error: depth must be greater than 0\n");
-	return -1;
-      }
-      break;
-      
     case 't':
       total = atoi(optarg);
       if (total < 1) {
@@ -200,7 +184,7 @@ int main(int argc, char *argv[])
       break;
 
     case 'H':
-      hierarchical_files.push_back(optarg);
+      hierarchical_model = optarg;
       break;
 
     case 'L':
@@ -263,31 +247,18 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  if (stm_files.size() == 0) {
-    fprintf(stderr, "error: need at least on stm file\n");
-    return -1;
-  }
-
   if (prior_file == nullptr) {
     fprintf(stderr, "error: required prior file parameter missing\n");
     return -1;
   }
 
-  if (stm_files.size() != hierarchical_files.size()) {
-    fprintf(stderr, "error: no. of stm and hierarchical files must match %d stm %d hierarchical \n",
-	    (int)stm_files.size(),
-	    (int)hierarchical_files.size());
-    return -1;
-  }
-
   Global global(input_obs,
-		stm_files,
 		initial_model,
 		prior_file,
 		degreex,
 		degreey,
 		depth,
-		hierarchical_files,
+		hierarchical_model,
 		seed,
 		kmax,
 		posteriork,
@@ -565,14 +536,11 @@ static void usage(const char *pname)
 	  "\n"
 	  " -i|--input <file>               Input observations file\n"
 	  " -I|--initial <file>             Starting model file\n"
-	  " -s|--stm <file>                 Forward model information file (may be more than 1)\n"
 	  " -M|--prior-file <file>          Prior/Proposal file\n"
 	  " -o|--output <path>              Output prefix for output files\n"
 	  "\n"
 	  " -d|--degree-depth <int>         Number of vertical layers expressed as power of 2\n"
 	  " -l|--degree-lateral <int>       Number of horizontal points expressed as power of 2\n"
-	  "\n"
-	  " -D|--depth <float>              Depth to half-space (m)\n"
 	  "\n"
 	  " -t|--total <int>                Total number of iterations\n"
 	  " -S|--seed <int>                 Random number seed\n"

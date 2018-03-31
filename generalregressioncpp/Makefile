@@ -1,17 +1,17 @@
 
 CXX=mpicxx
-CXXFLAGS=-c -g -Wall -I..
+CXXFLAGS=-c -g -Wall -I../base
 
 CXXFLAGS+=-O3
 
 BASEOBJS = \
-	../generalvoronois2exception.o \
-	../hierarchical_model.o \
-	../pathutil.o \
-	../prior.o \
-	../rng.o \
-	../sphericalprior.o \
-	../globalS2Voronoi.o
+	../base/tdtwave2dinvert \
+	../base/generalvoronois2exception.o \
+	../base/hierarchical_model.o \
+	../base/pathutil.o \
+	../base/prior.o \
+	../base/rng.o \
+	../base/global.o
 
 LIBS = -L../libraries/log -llog \
 	$(shell gsl-config --libs)
@@ -19,25 +19,25 @@ LIBS = -L../libraries/log -llog \
 TARGETOBJS = genericregression.o
 
 TARGETS = mksyntheticregression \
-	regressionvoronois2 \
-	regressionvoronois2pt
+	regressiontdtwave2d \
+	regressiontdtwave2dpt
 
 all : $(TARGETS)
 
 genericregression.o : genericregression.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-../%.o : ../%.cpp
-	make -C ..  $*.o
+../base/%.o : ../base/%.cpp
+	make -C ../base  $*.o
 
-mksyntheticregression : $(TARGETOBJS) $(BASEOBJS) ../mksynthetic.o
-	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../mksynthetic.o $(LIBS)
+mksyntheticregression : $(TARGETOBJS) $(BASEOBJS) ../mksyntheticobservations.o
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../mksyntheticobservations.o $(LIBS)
 
-regressionvoronois2 : $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2.o 
-	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2.o $(LIBS)
+regressiontdtwave2d : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert.o 
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert .o $(LIBS)
 
-regressionvoronois2pt : $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2pt.o 
-	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2pt.o $(LIBS)
+regressiontdtwave2dpt : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvertpt.o 
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvertpt.o $(LIBS)
 
 clean :
 	rm -f $(TARGETS)
