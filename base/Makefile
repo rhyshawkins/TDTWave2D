@@ -25,6 +25,7 @@ OBJS = birth.o \
 	death.o \
 	global.o \
 	hierarchical.o \
+	hierarchicalmodel.o \
 	hierarchicalprior.o \
 	ptexchange.o \
 	resample.o \

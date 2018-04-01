@@ -40,6 +40,9 @@ public:
     WAVELET_MAX = 5
   };
 
+  //
+  // Inversion construction
+  //
   Global(const char *filename,
 	 const char *initial_model,
 	 const char *prior_file,
@@ -51,6 +54,7 @@ public:
 	 bool posteriork,
 	 int hwavelet,
 	 int vwavelet);
+
   ~Global();
 
   double likelihood(double &log_normalization);
@@ -115,17 +119,22 @@ public:
   double *model;
   double *workspace;
 
+  int nobservations;
+  
   int mean_residual_n;
   int residual_size;
   int residuals_per_column;
+
+  double *predictions;
+  double *unused;
   
   double *residual;
-  double *mean_residual;
   double *last_valid_residual;
+  double *mean_residual;
 
   double *residual_normed;
-  double *mean_residual_normed;
   double *last_valid_residual_normed;
+  double *mean_residual_normed;
 
   bool residuals_valid;
 
@@ -158,8 +167,6 @@ public:
   int mpi_rank;
   double temperature;
 
-  int *column_offsets;
-  int *column_sizes;
   int *residual_offsets;
   int *residual_sizes;
 

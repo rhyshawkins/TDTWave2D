@@ -2,175 +2,36 @@
 #ifndef hierarchicalmodel_hpp
 #define hierarchicalmodel_hpp
 
-#include <stdio.h>
-#include <map>
-#include <string>
-#include <vector>
+#include <ostream>
+#include <istream>
 
 class hierarchicalmodel {
 public:
 
-  hierarchicalmodel();
+  hierarchicalmodel(int nhierarchical);
   virtual ~hierarchicalmodel();
 
-  virtual int nparameters() const = 0;
+  virtual int get_nhierarchical() const;
+  virtual void set(int i, double v);
+  virtual double get(int i) const;
 
-  virtual double getparameter(int i) const = 0;
+  virtual bool write(std::ostream &s) const;
+  virtual bool read(std::istream &s);
 
-  virtual void setparameter(int i, double v) = 0;
-  
-  virtual double noise(double observed_magnitude,
-		       double observed_time,
-		       double scale) = 0;
+protected:
 
-  virtual double nll(const std::vector<double> &observed_response,
-		     const double *time,
-		     const double *residuals,
-		     double lambda_scale,
-		     double *residuals_normed,
-		     double &log_normalization) = 0;
-  
-  static hierarchicalmodel *load(const char *filename);
-
-  typedef hierarchicalmodel* (*reader_function_t)(FILE *fp);
-
-private:
-  
-  static std::map<std::string, reader_function_t> readers;
+  int nhierarchical;
+  double *hierarchical;
   
 };
 
-class independentgaussianhierarchicalmodel : public hierarchicalmodel {
-public:
-  
-  independentgaussianhierarchicalmodel();
-  virtual ~independentgaussianhierarchicalmodel();
-
-  virtual int nparameters() const;
-
-  virtual double getparameter(int i) const;
-
-  virtual void setparameter(int i, double v);
-  
-  virtual double noise(double observed_magnitude,
-		       double observed_time,
-		       double scale);
-
-  virtual double nll(const std::vector<double> &observed_response,
-		     const double *time,
-		     const double *residuals,
-		     double lambda_scale,
-		     double *residuals_normed,
-		     double &log_normalization);  
-
-  static hierarchicalmodel *read(FILE *fp);
-
-private:
-
-  double sigma;
-  
-};
-
-class hyperbolichierarchicalmodel : public hierarchicalmodel {
-public:
-  
-  hyperbolichierarchicalmodel();
-  virtual ~hyperbolichierarchicalmodel();
-
-  virtual int nparameters() const;
-
-  virtual double getparameter(int i) const;
-
-  virtual void setparameter(int i, double v);
-  
-  virtual double noise(double observed_magnitude,
-		       double observed_time,
-		       double scale);
-
-  virtual double nll(const std::vector<double> &observed_response,
-		     const double *time,
-		     const double *residuals,
-		     double lambda_scale,
-		     double *residuals_normed,
-		     double &log_normalization);  
-
-  static hierarchicalmodel *read(FILE *fp);
-
-private:
-
-  double A, B, C;
-
-};
-
-class brodiehierarchicalmodel : public hierarchicalmodel {
+class singlescaling_hierarchicalmodel : public hierarchicalmodel {
 public:
 
-  brodiehierarchicalmodel();
-  virtual ~brodiehierarchicalmodel();
-
-  virtual int nparameters() const;
-
-  virtual double getparameter(int i) const;
-
-  virtual void setparameter(int i, double v);
-
-  virtual double noise(double observed_magnitude,
-		       double observed_time,
-		       double scale);
-
-  virtual double nll(const std::vector<double> &observed_response,
-		     const double *time,
-		     const double *residuals,
-		     double lambda_scale,
-		     double *residuals_normed,
-		     double &log_normalization);  
-
-  static hierarchicalmodel *read(FILE *fp);
-
-private:
-
-  double additive_noise(double observed_time);
-  
-  int ntimes;
-  double *time;
-  double *additive;
-
-  double relative;
+  singlescaling_hierarchicalmodel(double lambda = 1.0);
+  ~singlescaling_hierarchicalmodel();
 
 };
 
-class covariancehierarchicalmodel : public hierarchicalmodel {
-public:
-
-  covariancehierarchicalmodel();
-  virtual ~covariancehierarchicalmodel();
-
-  virtual int nparameters() const;
-
-  virtual double getparameter(int i) const;
-
-  virtual void setparameter(int i, double v);
-
-  virtual double noise(double observed_magnitude,
-		       double observed_time,
-		       double scale);
-
-  virtual double nll(const std::vector<double> &observed_response,
-		     const double *time,
-		     const double *residuals,
-		     double lambda_scale,
-		     double *residuals_normed,
-		     double &log_normalization);  
-
-  static hierarchicalmodel *read(FILE *fp);
-
-private:
-
-  int size;
-  double *w;
-  double *v;
-  
-};
-    
-#endif // hierarchicalmodel.hpp
+#endif // hierarchicalmodel_hpp
   

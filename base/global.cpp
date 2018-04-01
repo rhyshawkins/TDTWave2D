@@ -11,6 +11,8 @@ extern "C" {
 
 #include "constants.hpp"
 
+#include "genericinterface.hpp"
+
 const int CHAIN_STEPS = 1000000;
 
 int global_coordtoindex(void *user, int i, int j, int k, int depth)
@@ -55,13 +57,16 @@ Global::Global(const char *filename,
   image(nullptr),
   model(nullptr),
   workspace(nullptr),
+  nobservations(0),
+  predictions(nullptr),
+  unused(nullptr),
   mean_residual_n(0),
   residual(nullptr),
-  mean_residual(nullptr),
   last_valid_residual(nullptr),
+  mean_residual(nullptr),
   residual_normed(nullptr),
-  mean_residual_normed(nullptr),
   last_valid_residual_normed(nullptr),
+  mean_residual_normed(nullptr),
   residuals_valid(false),
   residual_hist_bins(100),
   residual_hist_min(-5.0),
@@ -80,8 +85,6 @@ Global::Global(const char *filename,
   mpi_size(-1),
   mpi_rank(-1),
   temperature(1.0),
-  column_offsets(nullptr),
-  column_sizes(nullptr),
   residual_offsets(nullptr),
   residual_sizes(nullptr)
 {
@@ -125,18 +128,24 @@ Global::Global(const char *filename,
     }
     workspace = new double[workspacesize];
 
-    int ntotal = 0; // TODO
-    INFO("Data: %d total points\n", ntotal);
+    int n = strlen(filename);
+    nobservations = tdtwave2d_loaddata_(&n, filename, &width, &height);
+    if (nobservations < 0) {
+      throw TDTWAVE2DEXCEPTION("Failed to read input data file");
+    }
 
-    residual_size = ntotal;
+    INFO("Data: %d total points\n", nobservations);
+
+    residual_size = nobservations;
+    predictions = new double[residual_size];
+    unused = new double[residual_size];
+    
     residual = new double[residual_size];
-    mean_residual = new double[residual_size];
     last_valid_residual = new double[residual_size];
+    mean_residual = new double[residual_size];
     residual_normed = new double[residual_size];
+    last_valid_residual_normed = new double[residual_size];
     mean_residual_normed = new double[residual_size];
-    last_valid_residual_normed = new double [residual_size];
-
-    residuals_per_column = residual_size/image->columns;
 
     residual_hist = new int[residual_size * residual_hist_bins];
 
@@ -272,20 +281,32 @@ Global::likelihood(double &log_normalization)
       throw TDTWAVE2DEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
 
-    double sum = 0.0;
-    int residual_offset;
+    for (int i = 0; i < nobservations; i ++) {
+      if (tdtwave2d_compute_prediction_(&i,
+					&width,
+					&height,
+					image->image,
+					unused,
+					&predictions[i]) < 0) {
+	throw TDTWAVE2DEXCEPTION("Failed to compute prediction for observations %d\n", i);
+      }
+					
+    }
 
-    log_normalization = 0.0;
-    
-    for (int i = 0; i < image->columns; i ++) {
-
-      residual_offset = i * residuals_per_column;
-      
-
-      
+    double likelihood = 0.0;
+    double hvalue = lambda->get(0);
+    if (tdtwave2d_compute_likelihood_(&nobservations,
+				      &hvalue,
+				      predictions,
+				      residual,
+				      unused,
+				      &likelihood,
+				      &log_normalization) < 0) {
+      throw TDTWAVE2DEXCEPTION("Failed to compute likelihood");
     }
     
-    return sum;
+    return likelihood;
+    
   } else {
     return 1.0;
   }
@@ -305,16 +326,19 @@ Global::hierarchical_likelihood(double proposed_lambda_scale,
       accept();
     }
 
-    double sum = 0.0;
-    int residual_offset;
-  
-    for (int i = 0; i < image->columns; i ++) {
-      
-      residual_offset = i * residuals_per_column;
+    double likelihood = 0.0;
+    if (tdtwave2d_compute_likelihood_(&nobservations,
+				      &proposed_lambda_scale,
+				      predictions,
+				      residual,
+				      unused,
+				      &likelihood,
+				      &log_normalization) < 0) {
+      throw TDTWAVE2DEXCEPTION("Failed to compute likelihood");
     }
-
-    return sum;
-
+    
+    return likelihood;
+    
   } else {
     return 1.0;
   }
@@ -333,35 +357,30 @@ Global::initialize_mpi(MPI_Comm _communicator, double _temperature)
     throw TDTWAVE2DEXCEPTION("MPI Failure\n");
   }
 
-  column_offsets = new int[mpi_size];
-  column_sizes = new int[mpi_size];
   residual_offsets = new int[mpi_size];
   residual_sizes = new int[mpi_size];
 
-  int columns = image->columns;
+  int columns = nobservations;
   int processes = mpi_size;
 
   //
   // Evenly distribute columns
   //
   for (int i = 0; i < mpi_size; i ++) {
-    column_sizes[i] = columns/processes;
-    residual_sizes[i] = column_sizes[i] * residuals_per_column;
+    residual_sizes[i] = columns/processes;
 
-    columns -= column_sizes[i];
+    columns -= residual_sizes[i];
     processes --;
   }
 
-  column_offsets[0] = 0;
   residual_offsets[0] = 0;
   for (int i = 1; i < mpi_size; i ++) {
-    column_offsets[i] = column_offsets[i - 1] + column_sizes[i - 1];
-    residual_offsets[i] = column_offsets[i] * residuals_per_column;
-    INFO("Split: %4d %4d", column_offsets[i], column_sizes[i]);
+    residual_offsets[i] = residual_offsets[i - 1] + residual_sizes[i - 1];
+    INFO("Split: %4d %4d", residual_offsets[i], residual_sizes[i]);
   }
 
-  if (column_offsets[mpi_size - 1] + column_sizes[mpi_size - 1] != image->columns) {
-    throw TDTWAVE2DEXCEPTION("Column sharing intialization failure\n");
+  if (residual_offsets[mpi_size - 1] + residual_sizes[mpi_size - 1] != nobservations) {
+    throw TDTWAVE2DEXCEPTION("Residual sharing intialization failure\n");
   }
 
   temperature = _temperature;
@@ -398,54 +417,57 @@ Global::likelihood_mpi(double &log_normalization)
       throw TDTWAVE2DEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
 
-    double sum = 0.0;
-    double local_log_normalization = 0.0;
-    int residual_offset;
+    //
+    // In parallel, compute predictions
+    //
     
-    for (int mi = 0, i = column_offsets[mpi_rank]; mi < column_sizes[mpi_rank]; mi ++, i ++) {
+    for (int mi = 0, i = residual_offsets[mpi_rank]; mi < residual_sizes[mpi_rank]; mi ++, i ++) {
 
-      residual_offset = i * residuals_per_column;
+      if (tdtwave2d_compute_prediction_(&i,
+					&width,
+					&height,
+					image->image,
+					unused,
+					&predictions[i]) < 0) {
+	throw TDTWAVE2DEXCEPTION("Failed to compute prediction for observations %d\n", i);
+      }
+					
+    }
+
+    //
+    // Gather predictions
+    //
+    MPI_Allgatherv(predictions + residual_offsets[mpi_rank],
+		   residual_sizes[mpi_rank],
+		   MPI_DOUBLE,
+		   predictions,
+		   residual_sizes,
+		   residual_offsets,
+		   MPI_DOUBLE,
+		   communicator);
+
+    double likelihood = 0.0;
+    
+    if (mpi_rank == 0) {
+
+      double hvalue = lambda->get(0);
       
+      if (tdtwave2d_compute_likelihood_(&nobservations,
+					&hvalue,
+					predictions,
+					residual,
+					unused,
+					&likelihood,
+					&log_normalization) < 0) {
+	throw TDTWAVE2DEXCEPTION("Failed to compute likelihood");
+      }
+
     }
 
-    double total;
-    
-    if (MPI_Reduce(&local_log_normalization, &total, 1, MPI_DOUBLE, MPI_SUM, 0, communicator) != MPI_SUCCESS) {
-      throw TDTWAVE2DEXCEPTION("Likelihood failed in reducing\n");
-    }
-    if (MPI_Bcast(&total, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-      throw TDTWAVE2DEXCEPTION("Likelihood failed in broadcast\n");
-    }
+    MPI_Bcast(&likelihood, 1, MPI_DOUBLE, 0, communicator);
+    MPI_Bcast(&log_normalization, 1, MPI_DOUBLE, 0, communicator);
 
-    log_normalization = total;
-    
-    if (MPI_Reduce(&sum, &total, 1, MPI_DOUBLE, MPI_SUM, 0, communicator) != MPI_SUCCESS) {
-      throw TDTWAVE2DEXCEPTION("Likelihood failed in reducing\n");
-    }
-    if (MPI_Bcast(&total, 1, MPI_DOUBLE, 0, communicator) != MPI_SUCCESS) {
-      throw TDTWAVE2DEXCEPTION("Likelihood failed in broadcast\n");
-    }
-
-
-    MPI_Allgatherv(residual + residual_offsets[mpi_rank],
-		   residual_sizes[mpi_rank],
-		   MPI_DOUBLE,
-		   residual,
-		   residual_sizes,
-		   residual_offsets,
-		   MPI_DOUBLE,
-		   communicator);
-
-    MPI_Allgatherv(residual_normed + residual_offsets[mpi_rank],
-		   residual_sizes[mpi_rank],
-		   MPI_DOUBLE,
-		   residual_normed,
-		   residual_sizes,
-		   residual_offsets,
-		   MPI_DOUBLE,
-		   communicator);
-
-    return total;
+    return likelihood;
     
   } else {
     log_normalization = 0.0;
@@ -579,7 +601,6 @@ void
 Global::update_residual_covariance()
 {
   double *p = last_valid_residual;
-  int nobservations = 0; //TODO
   for (int k = 0; k < nobservations; k ++) {
 
     cov_n ++;

@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <getopt.h>
 
@@ -120,12 +121,86 @@ int main(int argc, char *argv[])
   }
       
 
+  //
+  // Load image
+  //
   tdtwave2dimage image;
   if (!image.load(input_image)) {
     fprintf(stderr, "error: failed to load image file\n");
     return -1;
   }
 
+  //
+  // Load data
+  //
+  int n = strlen(input_points);
+  int nobservations = tdtwave2d_loaddata_(&n, input_points, &image.rows, &image.columns);
+  if (nobservations <= 0) {
+    fprintf(stderr, "error: failed to load data\n");
+    return -1;
+  }
+
+  //
+  // Compute predictions
+  //
+  double *pred = new double[nobservations];
+  double *unused = new double[nobservations];
+
+  for (int i = 0; i < nobservations; i ++) {
+
+    if (tdtwave2d_compute_prediction_(&i,
+				      &image.rows, &image.columns,
+				      image.image,
+				      unused,
+				      pred) < 0) {
+      fprintf(stderr, "error: failed to compute prediction for %d\n", i);
+      return -1;
+    }
+
+  }
+
+  //
+  // Output true observations if requested
+  //
+  if (output_true != nullptr) {
+    int n = strlen(output_true);
+    double sigma = 0.0;
+    if (tdtwave2d_savedata_(&n,
+			    output_true,
+			    &sigma,
+			    &nobservations,
+			    pred) < 0) {
+      fprintf(stderr, "error: failed to save true observations\n");
+      return -1;
+    }
+
+  }
+
+  //
+  // Add noise to predictions
+  //
+  Rng random(seed);
+  for (int i = 0; i < nobservations; i ++) {
+
+    pred[i] += random.normal(noise);
+
+  }
+
+  //
+  // Output noisy observations
+  //
+  n = strlen(output_file);
+  if (tdtwave2d_savedata_(&n,
+			  output_file,
+			  &noise,
+			  &nobservations,
+			  pred) < 0) {
+    fprintf(stderr, "error: failed to save observations\n");
+    return -1;
+  }
+
+  delete [] unused;
+  delete [] pred;
 
   return 0;
 }
