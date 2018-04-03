@@ -52,8 +52,7 @@ public:
 	 int seed,
 	 int kmax,
 	 bool posteriork,
-	 int hwavelet,
-	 int vwavelet);
+	 int wavelet);
 
   ~Global();
 
@@ -102,8 +101,6 @@ public:
   int kmax;
   int maxdepth;
   int treemaxdepth;
-
-  double depth;
 
   wavetree2d_sub_t *wt;
   chain_history_t *ch;

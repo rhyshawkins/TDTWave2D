@@ -44,8 +44,7 @@ Global::Global(const char *filename,
 	       int seed,
 	       int _kmax,
 	       bool _posteriork,
-	       int hwavelet,
-	       int vwavelet) :
+	       int wavelet) :
   kmax(_kmax),
   treemaxdepth(-1),
   wt(nullptr),
@@ -76,6 +75,7 @@ Global::Global(const char *filename,
   height(-1),
   size(-1),
   ncoeff(-1),
+  lambda(new singlescaling_hierarchicalmodel(1.0)),
   lambda_scale(1.0),
   current_likelihood(-1.0),
   coeff_hist(nullptr),
@@ -93,10 +93,6 @@ Global::Global(const char *filename,
     throw TDTWAVE2DEXCEPTION("Degree(s) out of range: %d x %d\n", degreex, degreey);
   }
   
-  if (depth <= 0.0) {
-    throw TDTWAVE2DEXCEPTION("Depth out of range\n");
-  }
-
   if (!posteriork) {
     //
     // Load observations
@@ -238,14 +234,14 @@ Global::Global(const char *filename,
     }
   }
     
-  hwaveletf = wavelet_inverse_function_from_id(hwavelet);
+  hwaveletf = wavelet_inverse_function_from_id(wavelet);
   if (hwaveletf == nullptr) {
-    throw TDTWAVE2DEXCEPTION("Invalid horizontal wavelet %d\n", hwavelet);
+    throw TDTWAVE2DEXCEPTION("Invalid horizontal wavelet %d\n", wavelet);
   }
 
-  vwaveletf = wavelet_inverse_function_from_id(vwavelet);
+  vwaveletf = wavelet_inverse_function_from_id(wavelet);
   if (vwaveletf == nullptr) {
-    throw TDTWAVE2DEXCEPTION("Invalid vertical wavelet %d\n", vwavelet);
+    throw TDTWAVE2DEXCEPTION("Invalid vertical wavelet %d\n", wavelet);
   }
 
 }

@@ -29,15 +29,15 @@ extern "C" {
 
 #include "tdtwave2dutil.hpp"
 
-static char short_options[] = "i:I:M:o:d:l:t:S:H:L:k:B:Pw:W:v:h";
+static char short_options[] = "i:I:M:o:x:y:t:S:H:L:k:B:Pw:v:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"initial", required_argument, 0, 'I'},
   {"prior-file", required_argument, 0, 'M'},
   {"output", required_argument, 0, 'o'},
   
-  {"degree-depth", required_argument, 0, 'd'},
-  {"degree-lateral", required_argument, 0, 'l'},
+  {"degree-x", required_argument, 0, 'x'},
+  {"degree-y", required_argument, 0, 'y'},
 
   {"total", required_argument, 0, 't'},
   {"seed", required_argument, 0, 'S'},
@@ -51,8 +51,7 @@ static struct option long_options[] = {
 
   {"posteriork", 0, 0, 'P'},
 
-  {"wavelet-vertical", required_argument, 0, 'w'},
-  {"wavelet-horizontal", required_argument, 0, 'W'},
+  {"wavelet", required_argument, 0, 'w'},
 
   {"verbosity", required_argument, 0, 'v'},
 
@@ -90,8 +89,7 @@ int main(int argc, char *argv[])
 
   bool posteriork;
 
-  int wavelet_v;
-  int wavelet_h;
+  int wavelet;
 
   int verbosity;
   
@@ -104,7 +102,7 @@ int main(int argc, char *argv[])
   prior_file = nullptr;
   output_prefix = nullptr;
 
-  degreex = 10;
+  degreex = 5;
   degreey = 5;
 
   total = 10000;
@@ -117,8 +115,7 @@ int main(int argc, char *argv[])
 
   posteriork = false;
 
-  wavelet_v = 0;
-  wavelet_h = 0;
+  wavelet = 0;
 
   verbosity = 1000;
 
@@ -151,18 +148,18 @@ int main(int argc, char *argv[])
       output_prefix = optarg;
       break;
 
-    case 'd':
-      degreey = atoi(optarg);
-      if (degreey < 1 || degreey > 16) {
-	fprintf(stderr, "error: degree y must be between 1 and 16 inclusive\n");
+    case 'x':
+      degreex = atoi(optarg);
+      if (degreex < 1 || degreex > 16) {
+	fprintf(stderr, "error: degree x must be between 1 and 16 inclusive\n");
 	return -1;
       }
       break;
 
-    case 'l':
-      degreex = atoi(optarg);
-      if (degreex < 1 || degreex > 16) {
-	fprintf(stderr, "error: degree x must be between 1 and 16 inclusive\n");
+    case 'y':
+      degreey = atoi(optarg);
+      if (degreey < 1 || degreey > 16) {
+	fprintf(stderr, "error: degree y must be between 1 and 16 inclusive\n");
 	return -1;
       }
       break;
@@ -212,16 +209,8 @@ int main(int argc, char *argv[])
       break;
 
     case 'w':
-      wavelet_v = atoi(optarg);
-      if (wavelet_v < 0 || wavelet_v > Global::WAVELET_MAX) {
-	fprintf(stderr, "error: horizontal wavelet must be in range 0 .. %d\n", (int)Global::WAVELET_MAX);
-	return -1;
-      }
-      break;
-
-    case 'W':
-      wavelet_h = atoi(optarg);
-      if (wavelet_h < 0 || wavelet_h > Global::WAVELET_MAX) {
+      wavelet = atoi(optarg);
+      if (wavelet < 0 || wavelet > Global::WAVELET_MAX) {
 	fprintf(stderr, "error: horizontal wavelet must be in range 0 .. %d\n", (int)Global::WAVELET_MAX);
 	return -1;
       }
@@ -257,8 +246,7 @@ int main(int argc, char *argv[])
 		seed,
 		kmax,
 		posteriork,
-		wavelet_h,
-		wavelet_v);
+		wavelet);
 
   Birth birth(global);
   Death death(global);

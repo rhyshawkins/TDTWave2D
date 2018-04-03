@@ -39,3 +39,7 @@ all : $(OBJS)
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -o $*.o $*.cpp
+
+clean :
+	rm -f $(OBJS)
+

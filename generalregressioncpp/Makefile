@@ -10,6 +10,7 @@ BASEOBJS = \
 	../base/death.o \
 	../base/global.o \
 	../base/hierarchical.o \
+	../base/hierarchicalmodel.o \
 	../base/hierarchicalprior.o \
 	../base/ptexchange.o \
 	../base/resample.o \

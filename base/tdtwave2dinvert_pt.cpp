@@ -37,15 +37,15 @@ extern "C" {
 
 #include "constants.hpp"
 
-static char short_options[] = "i:I:M:o:d:l:t:S:F:H:L:p:k:B:Pw:W:v:c:T:m:e:rU:R:h";
+static char short_options[] = "i:I:M:o:x:y:t:S:F:H:L:p:k:B:Pw:v:c:T:m:e:rU:R:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"initial", required_argument, 0, 'I'},
   {"prior-file", required_argument, 0, 'M'},
   {"output", required_argument, 0, 'o'},
   
-  {"degree-depth", required_argument, 0, 'd'},
-  {"degree-lateral", required_argument, 0, 'l'},
+  {"degree-x", required_argument, 0, 'x'},
+  {"degree-y", required_argument, 0, 'y'},
 
   {"total", required_argument, 0, 't'},
   {"seed", required_argument, 0, 'S'},
@@ -61,8 +61,7 @@ static struct option long_options[] = {
 
   {"posteriork", no_argument, 0, 'P'},
 
-  {"wavelet-vertical", required_argument, 0, 'w'},
-  {"wavelet-horizontal", required_argument, 0, 'W'},
+  {"wavelet", required_argument, 0, 'w'},
 
   {"verbosity", required_argument, 0, 'v'},
 
@@ -100,8 +99,6 @@ int main(int argc, char *argv[])
   int degreex;
   int degreey;
 
-  double depth;
-
   int total;
   int seed_base;
   int seed_mult;
@@ -114,8 +111,7 @@ int main(int argc, char *argv[])
 
   bool posteriork;
 
-  int wavelet_v;
-  int wavelet_h;
+  int wavelet;
 
   int verbosity;
 
@@ -150,8 +146,6 @@ int main(int argc, char *argv[])
   degreex = 10;
   degreey = 5;
 
-  depth = 500.0;
-
   total = 10000;
   seed_base = 983;
   seed_mult = 101;
@@ -164,8 +158,7 @@ int main(int argc, char *argv[])
 
   posteriork = false;
 
-  wavelet_v = 0;
-  wavelet_h = 0;
+  wavelet = 0;
 
   verbosity = 1000;
 
@@ -207,7 +200,15 @@ int main(int argc, char *argv[])
       output_prefix = optarg;
       break;
 
-    case 'd':
+    case 'x':
+      degreex = atoi(optarg);
+      if (degreex < 1 || degreex > 16) {
+	fprintf(stderr, "error: degree x must be between 1 and 16 inclusive\n");
+	return -1;
+      }
+      break;
+
+    case 'y':
       degreey = atoi(optarg);
       if (degreey < 1 || degreey > 16) {
 	fprintf(stderr, "error: degree y must be between 1 and 16 inclusive\n");
@@ -215,13 +216,6 @@ int main(int argc, char *argv[])
       }
       break;
 
-    case 'l':
-      degreex = atoi(optarg);
-      if (degreex < 1 || degreex > 16) {
-	fprintf(stderr, "error: degree x must be between 1 and 16 inclusive\n");
-	return -1;
-      }
-      break;
 
     case 't':
       total = atoi(optarg);
@@ -284,16 +278,8 @@ int main(int argc, char *argv[])
       break;
 
     case 'w':
-      wavelet_v = atoi(optarg);
-      if (wavelet_v < 0 || wavelet_v > Global::WAVELET_MAX) {
-	fprintf(stderr, "error: horizontal wavelet must be in range 0 .. %d\n", (int)Global::WAVELET_MAX);
-	return -1;
-      }
-      break;
-
-    case 'W':
-      wavelet_h = atoi(optarg);
-      if (wavelet_h < 0 || wavelet_h > Global::WAVELET_MAX) {
+      wavelet = atoi(optarg);
+      if (wavelet < 0 || wavelet > Global::WAVELET_MAX) {
 	fprintf(stderr, "error: horizontal wavelet must be in range 0 .. %d\n", (int)Global::WAVELET_MAX);
 	return -1;
       }
@@ -446,8 +432,7 @@ int main(int argc, char *argv[])
 			      seed_base + mpi_rank*seed_mult,
 			      kmax,
 			      posteriork,
-			      wavelet_h,
-			      wavelet_v);
+			      wavelet);
 
   Birth *birth = new Birth(*global);
   Death *death = new Death(*global);
@@ -963,14 +948,11 @@ static void usage(const char *pname)
 	  "\n"
 	  " -i|--input <file>               Input observations file\n"
 	  " -I|--initial <file>             Starting model file\n"
-	  " -s|--stm <file>                 Forward model information file (may be more than 1)\n"
 	  " -M|--prior-file <file>          Prior/Proposal file\n"
 	  " -o|--output <path>              Output prefix for output files\n"
 	  "\n"
-	  " -d|--degree-depth <int>         Number of vertical layers expressed as power of 2\n"
-	  " -l|--degree-lateral <int>       Number of horizontal points expressed as power of 2\n"
-	  "\n"
-	  " -D|--depth <float>              Depth to half-space (m)\n"
+	  " -x|--degree-x <int>             Number of horizontal cells expressed as power of 2\n"
+	  " -y|--degree-y <int>       Number of vertical cells expressed as power of 2\n"
 	  "\n"
 	  " -t|--total <int>                Total number of iterations\n"
 	  " -S|--seed <int>                 Random number seed\n"
@@ -984,8 +966,7 @@ static void usage(const char *pname)
 	  " -B|--birth-probability <float>  Birth probability\n"
 	  " -P|--posteriork                 Posterior k simulation\n"
 	  "\n"
-	  " -w|--wavelet-vertical <int>     Wavelet basis to use for vertical direction\n"
-	  " -W|--wavelet-horizontal <int>   Wavelet basis to use for horizontal direction\n"
+	  " -w|--wavelet <int>              Wavelet basis to use\n"
 	  "\n"
 	  " -c|--chains <int>               No. of chains per temperature\n"
 	  " -T|--temperatures <int>         No. of temperature levels\n"
