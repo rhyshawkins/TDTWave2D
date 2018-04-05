@@ -21,7 +21,8 @@ extern "C" {
 
 #include "global.hpp"
 
-#include "aemutil.hpp"
+#include "tdtwave2dutil.hpp"
+#include "tdtwave2dexception.hpp"
 
 struct user_data {
   int thincounter;
@@ -786,7 +787,7 @@ static int process(int stepi,
 			       d->hwaveletf,
 			       d->vwaveletf,
 			       1) < 0) {
-      throw AEMEXCEPTION("Failed to do inverse transform on coefficients\n");
+      throw TDTWAVE2DEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
     
     if (d->logimage) {

@@ -56,6 +56,21 @@ extern "C" {
 		 &obs[i].sigma) != 4) {
 	return -1;
       }
+
+      int ii = (int)((obs[i].lon - bounds.minlon)/(bounds.maxlon - bounds.minlon) * (double)(*width));
+      if (ii < 0 || ii >= (*width)) {
+	fprintf(stderr, "error: point %10.6f out of range\n", obs[i].lon);
+	return -1;
+      }
+
+      int ij = (int)((obs[i].lat - bounds.minlat)/(bounds.maxlat - bounds.minlat) * (double)(*height));
+      if (ij < 0 || ij >= (*height)) {
+	fprintf(stderr, "error: point %10.6f out of range\n", obs[i].lat);
+	return -1;
+      }
+
+      obs[i].vidx = ii + ij * (*width);
+      
     }
 
     fclose(fp);

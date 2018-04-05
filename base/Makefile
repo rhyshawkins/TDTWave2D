@@ -10,15 +10,22 @@ INCLUDES = \
 	-I$(BASE)/wavelet \
 	-I$(BASE)/wavetree
 
-EXTRA_LIBS = \
-	-L$(BASE)/tracking -ltracking \
-	-L$(BASE)/log -llog
+BASELIB=../../TDTbase
+LIBS = -L$(BASELIB)/hnk -lhnk \
+        -L$(BASELIB)/tracking -ltracking \
+        -L$(BASELIB)/log -llog \
+        -L$(BASELIB)/wavetree -lwavetree \
+        -L$(BASELIB)/sphericalwavelet -lsphericalwavelet \
+        -L$(BASELIB)/oset -loset \
+        -L$(BASELIB)/wavelet -lwavelet \
+        $(shell gsl-config --libs) \
+        -lgmp
 
 
-CXX = g++
+CXX = mpicxx
 CXXFLAGS = -c -g -Wall --std=c++11 $(INCLUDES)
 
-CXXFLAGS += -O3
+#CXXFLAGS += -O3
 
 OBJS = birth.o \
 	constants.o \
@@ -34,7 +41,8 @@ OBJS = birth.o \
 	tdtwave2dutil.o \
 	value.o
 
-all : $(OBJS)
+
+all : $(OBJS) $(POSTPROCESS)
 
 
 %.o : %.cpp

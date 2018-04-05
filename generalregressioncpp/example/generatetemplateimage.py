@@ -7,8 +7,13 @@ def model_constant(amplitude, scale, nx, ny):
 
     return amplitude
 
+def model_gaussian(amplitude, scale, nx, ny):
 
-MODELS = {'Constant' : model_constant}
+    r2 = (nx*nx + ny*ny)/(2.0 * scale*scale)
+    return numpy.exp(-r2) * amplitude
+
+MODELS = {'Constant' : model_constant,
+          'Gaussian' : model_gaussian}
 
 if __name__ == '__main__':
 
@@ -19,13 +24,20 @@ if __name__ == '__main__':
 
     parser.add_argument('-o', '--output', type = str, required = True, help = 'Output file')
 
-    parser.add_argument('-A', '--amplitude', type = float, default = 0.0, help = 'Amplitude')
+    parser.add_argument('-A', '--amplitude', type = float, default = 1.0, help = 'Amplitude')
     parser.add_argument('-S', '--scale', type = float, default = 1.0, help = 'Scale')
     
     parser.add_argument('-m', '--model', type = str, default = 'Constant', help = 'Model name')
-                        
+
+    parser.add_argument('-l', '--list-models', action = 'store_true', default = False, help = 'List models')
+    
     args = parser.parse_args()
 
+    if args.list_models:
+        print MODELS.keys()
+        sys.exit(-1)
+
+        
     if (args.width <= 0) or ((args.width & (args.width - 1)) != 0):
         print 'Width must be positive power of 2'
         sys.exit(-1)

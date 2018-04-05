@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 				      &image.rows, &image.columns,
 				      image.image,
 				      unused,
-				      pred) < 0) {
+				      &pred[i]) < 0) {
       fprintf(stderr, "error: failed to compute prediction for %d\n", i);
       return -1;
     }

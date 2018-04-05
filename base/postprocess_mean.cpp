@@ -20,6 +20,7 @@ extern "C" {
 };
 
 #include "global.hpp"
+#include "tdtwave2dexception.hpp"
 
 struct user_data {
   int thincounter;
@@ -68,10 +69,10 @@ static double head_from_histogram(int *hist, double vmin, double vmax, int bins,
 static double tail_from_histogram(int *hist, double vmin, double vmax, int bins, int drop);
 static double hpd_from_histogram(int *hist, double vmin, double vmax, int bins, double hpd_interval, double &hpd_min, double &hpd_max);
 
-static char short_options[] = "d:l:i:o:v:D:t:s:m:M:c:C:g:p:P:Q:b:z:Z:S:w:W:Lh";
+static char short_options[] = "x:y:i:o:v:D:t:s:m:M:c:C:g:p:P:Q:b:z:Z:S:w:W:Lh";
 static struct option long_options[] = {
-  {"degree-depth", required_argument, 0, 'd'},
-  {"degree-lateral", required_argument, 0, 'l'},
+  {"degree-x", required_argument, 0, 'x'},
+  {"degree-y", required_argument, 0, 'y'},
 
   {"input", required_argument, 0, 'i'},
   {"output", required_argument, 0, 'o'},
@@ -119,8 +120,8 @@ int main(int argc, char *argv[])
   char *variance_file;
   char *stddev_file;
 
-  int degree_depth;
-  int degree_lateral;
+  int degree_x;
+  int degree_y;
 
   int thin;
   int skip;
@@ -150,8 +151,7 @@ int main(int argc, char *argv[])
 
   int credible_drop;
 
-  int waveleth;
-  int waveletv;
+  int wavelet;
 
   bool logimage;
 
@@ -160,8 +160,8 @@ int main(int argc, char *argv[])
    */
   fp_in = NULL;
   fp_out = NULL;
-  degree_depth = 5;
-  degree_lateral = 8;
+  degree_x = 5;
+  degree_y = 5;
   
   input_file = NULL;
   output_file = NULL;
@@ -187,8 +187,7 @@ int main(int argc, char *argv[])
 
   maxsteps = 1000000;
 
-  waveleth = 0;
-  waveletv = 0;
+  wavelet = 0;
 
   logimage = false;
   vmin = 0.001;
@@ -201,18 +200,18 @@ int main(int argc, char *argv[])
     }
 
     switch(c) {
-    case 'd':
-      degree_depth = atoi(optarg);
-      if (degree_depth < 1) {
-	fprintf(stderr, "error: invalid degree\n");
+    case 'x':
+      degree_x = atoi(optarg);
+      if (degree_x < 1) {
+	fprintf(stderr, "error: invalid x degree\n");
 	return -1;
       }
       break;
 
-    case 'l':
-      degree_lateral = atoi(optarg);
-      if (degree_lateral < 1) {
-	fprintf(stderr, "error: invalid lateral degree\n");
+    case 'y':
+      degree_y = atoi(optarg);
+      if (degree_y < 1) {
+	fprintf(stderr, "error: invalid y degree\n");
 	return -1;
       }
       break;
@@ -298,17 +297,9 @@ int main(int argc, char *argv[])
       break;
 
     case 'w':
-      waveletv = atoi(optarg);
-      if (waveletv < 0 || waveletv > Global::WAVELET_MAX) {
-	fprintf(stderr, "error: vertical wavelet must be between 0 and %d\n", (int)Global::WAVELET_MAX);
-	return -1;
-      }
-      break;
-
-    case 'W':
-      waveleth = atoi(optarg);
-      if (waveleth < 0 || waveleth > Global::WAVELET_MAX) {
-	fprintf(stderr, "error: horizontal wavelet must be between 0 and %d\n", (int)Global::WAVELET_MAX);
+      wavelet = atoi(optarg);
+      if (wavelet < 0 || wavelet > Global::WAVELET_MAX) {
+	fprintf(stderr, "error: wavelet must be between 0 and %d\n", (int)Global::WAVELET_MAX);
 	return -1;
       }
       break;
@@ -347,7 +338,7 @@ int main(int argc, char *argv[])
 
   data.counter = 0;
 
-  data.wt = wavetree2d_sub_create(degree_lateral, degree_depth, 0.0);
+  data.wt = wavetree2d_sub_create(degree_x, degree_y, 0.0);
   if (data.wt == nullptr) {
     fprintf(stderr, "error: failed to create wavetree\n");
     return -1;
@@ -382,8 +373,8 @@ int main(int argc, char *argv[])
   }
   data.workspace = new double[workspacesize];
 
-  data.vwaveletf = Global::wavelet_inverse_function_from_id(waveletv);
-  data.hwaveletf = Global::wavelet_inverse_function_from_id(waveleth);
+  data.vwaveletf = Global::wavelet_inverse_function_from_id(wavelet);
+  data.hwaveletf = Global::wavelet_inverse_function_from_id(wavelet);
 
   data.logimage = logimage;
   
@@ -720,7 +711,7 @@ static int process(int stepi,
 			       d->hwaveletf,
 			       d->vwaveletf,
 			       1) < 0) {
-      throw AEMEXCEPTION("Failed to do inverse transform on coefficients\n");
+      throw TDTWAVE2DEXCEPTION("Failed to do inverse transform on coefficients\n");
     }
     
     if (d->logimage) {

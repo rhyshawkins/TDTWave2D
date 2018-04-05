@@ -2,7 +2,7 @@
 CXX=mpicxx
 CXXFLAGS=-c -g -Wall -I../base
 
-CXXFLAGS+=-O3
+#CXXFLAGS+=-O3
 
 BASEOBJS = \
 	../base/birth.o \
@@ -37,7 +37,14 @@ TARGETS = mksyntheticregression \
 	regressiontdtwave2d \
 	regressiontdtwave2dpt
 
-all : $(TARGETS)
+POSTPROCESS = postprocess_khistory \
+	postprocess_likelihood \
+	postprocess_mean \
+	postprocess_mean_mpi
+
+
+
+all : $(TARGETS) $(POSTPROCESS)
 
 genericregression.o : genericregression.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
@@ -54,5 +61,17 @@ regressiontdtwave2d : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert.o
 regressiontdtwave2dpt : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert_pt.o 
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert_pt.o $(LIBS)
 
+postprocess_khistory : $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_khistory.o 
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_khistory.o $(LIBS)
+
+postprocess_likelihood : $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_likelihood.o 
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_likelihood.o $(LIBS)
+
+postprocess_mean : $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_mean.o 
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_mean.o $(LIBS)
+
+postprocess_mean_mpi : $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_mean_mpi.o 
+	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_mean_mpi.o $(LIBS)
+
 clean :
-	rm -f $(TARGETS)
+	rm -f $(TARGETOBJS) $(TARGETS)
