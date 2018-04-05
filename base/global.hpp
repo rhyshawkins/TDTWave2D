@@ -145,7 +145,6 @@ public:
   int size;
   int ncoeff;
 
-  hierarchicalmodel* lambda;
   double lambda_scale;
   
   double current_likelihood;

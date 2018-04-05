@@ -75,7 +75,6 @@ Global::Global(const char *filename,
   height(-1),
   size(-1),
   ncoeff(-1),
-  lambda(new singlescaling_hierarchicalmodel(1.0)),
   lambda_scale(1.0),
   current_likelihood(-1.0),
   coeff_hist(nullptr),
@@ -290,7 +289,7 @@ Global::likelihood(double &log_normalization)
     }
 
     double likelihood = 0.0;
-    double hvalue = lambda->get(0);
+    double hvalue = lambda_scale;
     if (tdtwave2d_compute_likelihood_(&nobservations,
 				      &hvalue,
 				      predictions,
@@ -446,7 +445,7 @@ Global::likelihood_mpi(double &log_normalization)
     
     if (mpi_rank == 0) {
 
-      double hvalue = lambda->get(0);
+      double hvalue = lambda_scale;
       
       if (tdtwave2d_compute_likelihood_(&nobservations,
 					&hvalue,

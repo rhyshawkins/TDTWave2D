@@ -26,10 +26,11 @@ extern "C" {
 #include "death.hpp"
 #include "value.hpp"
 #include "hierarchical.hpp"
+#include "hierarchicalprior.hpp"
 
 #include "tdtwave2dutil.hpp"
 
-static char short_options[] = "i:I:M:o:x:y:t:S:H:L:k:B:Pw:v:h";
+static char short_options[] = "i:I:M:o:x:y:t:S:H:L:p:k:B:Pw:v:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"initial", required_argument, 0, 'I'},
@@ -44,6 +45,7 @@ static struct option long_options[] = {
 
   {"hierarchical", required_argument, 0, 'H'},
   {"lambda-std", required_argument, 0, 'L'},
+  {"prior-std", required_argument, 0, 'p'},
 
   {"kmax", required_argument, 0, 'k'},
 
@@ -83,6 +85,7 @@ int main(int argc, char *argv[])
   int seed;
 
   double lambda_std;
+  double prior_std;
   int kmax;
 
   double Pb;
@@ -109,6 +112,7 @@ int main(int argc, char *argv[])
   seed = 983;
 
   lambda_std = 0.0;
+  prior_std = 0.0;
   kmax = 100;
   
   Pb = 0.05;
@@ -188,6 +192,14 @@ int main(int argc, char *argv[])
       }
       break;
       
+    case 'p':
+      prior_std = atof(optarg);
+      if (prior_std <= 0.0) {
+	fprintf(stderr, "Prior std dev must be greater than 0\n");
+	return -1;
+      }
+      break;
+
     case 'k':
       kmax = atoi(optarg);
       if (kmax < 1) {
@@ -255,6 +267,11 @@ int main(int argc, char *argv[])
   Hierarchical *hierarchical = nullptr;
   if (lambda_std > 0.0) {
     hierarchical = new Hierarchical(global, lambda_std);
+  }
+
+  HierarchicalPrior *hierarchical_prior = nullptr;
+  if (prior_std > 0.0) {
+    hierarchical_prior = new HierarchicalPrior(global, prior_std);
   }
 
   global.current_likelihood = global.likelihood(global.current_log_normalization);
@@ -396,6 +413,49 @@ int main(int argc, char *argv[])
       }
     }
 
+    //
+    // Hierarchical prior
+    //
+    if (hierarchical_prior != nullptr) {
+
+      if (hierarchical_prior->step() < 0) {
+        fprintf(stderr, "error: failed to do hierarchical prior step\n");
+        return -1;
+      }
+
+      chain_history_change_t step;
+        
+      hierarchical_prior->get_last_step(&step);
+        
+      step.header.likelihood = global.current_likelihood;
+      step.header.temperature = global.temperature;
+      step.header.hierarchical = global.lambda_scale;
+      
+      if (chain_history_full(global.ch)) {
+	
+	/*
+	 * Flush chain history to file
+	 */
+	if (chain_history_write(global.ch,
+				(ch_write_t)fwrite,
+				fp_ch) < 0) {
+	  ERROR("error: failed to write chain history segment to file\n");
+	  return -1;
+	}
+	
+	if (chain_history_reset(global.ch) < 0) {
+	  ERROR("error: failed to reset chain history\n");
+	  return -1;
+	}
+	
+      }
+      
+      if (chain_history_add_step(global.ch, &step) < 0) {
+	ERROR("error: failed to add step to chain history\n");
+	return -1;
+      }
+    }
+    
     int current_k = wavetree2d_sub_coeff_count(global.wt);
     
     if (verbosity > 0 && (i + 1) % verbosity == 0) {
@@ -412,6 +472,10 @@ int main(int argc, char *argv[])
       INFO(value.write_long_stats().c_str());
       if (hierarchical != nullptr) {
 	INFO(hierarchical->write_long_stats().c_str());
+      }
+
+      if (hierarchical_prior != nullptr) {
+	INFO(hierarchical_prior->write_long_stats().c_str());
       }
     }
 
@@ -462,7 +526,10 @@ int main(int argc, char *argv[])
     fprintf(fp, hierarchical->write_long_stats().c_str());
     fprintf(fp, "\n");
   }
-  
+  if (hierarchical_prior != nullptr) {
+    fprintf(fp, hierarchical_prior->write_long_stats().c_str());
+    fprintf(fp, "\n");
+  }
   fclose(fp);
   
   filename = mkfilename(output_prefix, "final_model.txt");

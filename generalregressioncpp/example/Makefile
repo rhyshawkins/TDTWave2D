@@ -26,6 +26,9 @@ syntheticobs_gaussian.txt : datatemplate.txt imagetemplategaussian.txt
 	../mksyntheticregression -i imagetemplategaussian.txt -I datatemplate.txt \
 	-o $@ -N 0.05
 
+#
+# Serial Constant True model
+#
 results_constant/ch.dat : syntheticobs_constant.txt
 	mkdir -p results_constant
 	../regressiontdtwave2d -i syntheticobs_constant.txt \
@@ -36,6 +39,9 @@ results_constant/ch.dat : syntheticobs_constant.txt
 results_constant/mean.txt : results_constant/ch.dat
 	../postprocess_mean -w 4 -x 5 -y 5 -i $< -o $@ -t 5 -s 50000
 
+#
+# Serial Gaussian Hill True model
+#
 results_gaussian/ch.dat : syntheticobs_gaussian.txt
 	mkdir -p results_gaussian
 	../regressiontdtwave2d -i syntheticobs_gaussian.txt \
@@ -45,4 +51,61 @@ results_gaussian/ch.dat : syntheticobs_gaussian.txt
 	-x 5 -y 5 -t 1000000 -w 4
 
 results_gaussian/mean.txt : results_gaussian/ch.dat
+	../postprocess_mean -w 4 -x 5 -y 5 -i $< -o $@ -t 5 -s 500000
+
+#
+# Serial Hierarchical Prior Constant
+#
+results_constant_hp/ch.dat : syntheticobs_constant.txt
+	mkdir -p results_constant_hp
+	../regressiontdtwave2d -i syntheticobs_constant.txt \
+	-M priorproposal.txt \
+	-o results_constant_hp/ \
+	-x 5 -y 5 -t 100000 -w 4 \
+	-p 0.1
+
+results_constant_hp/mean.txt : results_constant_hp/ch.dat
+	../postprocess_mean -w 4 -x 5 -y 5 -i $< -o $@ -t 5 -s 50000
+
+#
+# Serial Hierarchical Prior Gaussian
+#
+results_gaussian_hp/ch.dat : syntheticobs_gaussian.txt
+	mkdir -p results_gaussian_hp
+	../regressiontdtwave2d -i syntheticobs_gaussian.txt \
+	-M priorproposal.txt \
+	-o results_gaussian_hp/ \
+	-x 5 -y 5 -t 1000000 -w 4 \
+	-p 0.1
+
+results_gaussian_hp/mean.txt : results_gaussian_hp/ch.dat
+	../postprocess_mean -w 4 -x 5 -y 5 -i $< -o $@ -t 5 -s 500000
+
+#
+# Serial Hierarchical Noise Constant
+#
+results_constant_hn/ch.dat : syntheticobs_constant.txt
+	mkdir -p results_constant_hn
+	../regressiontdtwave2d -i syntheticobs_constant.txt \
+	-M priorproposal.txt \
+	-o results_constant_hn/ \
+	-x 5 -y 5 -t 100000 -w 4 \
+	-L 0.01
+
+results_constant_hn/mean.txt : results_constant_hn/ch.dat
+	../postprocess_mean -w 4 -x 5 -y 5 -i $< -o $@ -t 5 -s 50000
+
+#
+# Serial Hierarchical Noise Gaussian
+#
+results_gaussian_hn/ch.dat : syntheticobs_gaussian.txt
+	mkdir -p results_gaussian_hn
+	../regressiontdtwave2d -i syntheticobs_gaussian.txt \
+	-M priorproposal.txt \
+	-o results_gaussian_hn/ \
+	-x 5 -y 5 -t 1000000 -w 4 \
+	-v 10000 \
+	-L 0.01
+
+results_gaussian_hn/mean.txt : results_gaussian_hn/ch.dat
 	../postprocess_mean -w 4 -x 5 -y 5 -i $< -o $@ -t 5 -s 500000
