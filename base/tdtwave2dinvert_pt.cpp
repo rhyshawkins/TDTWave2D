@@ -446,7 +446,10 @@ int main(int argc, char *argv[])
     hierarchical_prior = new HierarchicalPrior(*global, prior_std);
   }
   
-  PTExchange *ptexchange = new PTExchange(*global);
+  PTExchange *ptexchange = nullptr;
+  if (temperatures > 1) {
+    ptexchange = new PTExchange(*global);
+  }
   
   MPI_Comm chain_communicator;
   MPI_Comm temperature_communicator;
@@ -481,10 +484,12 @@ int main(int argc, char *argv[])
     }
   }
 
-  ptexchange->initialize_mpi(MPI_COMM_WORLD,
-			     temperature_communicator,
-			     chain_communicator,
-			     temperatures);
+  if (ptexchange != nullptr) {
+    ptexchange->initialize_mpi(MPI_COMM_WORLD,
+			       temperature_communicator,
+			       chain_communicator,
+			       temperatures);
+  }
 
   global->current_likelihood = global->likelihood_mpi(global->current_log_normalization);
     
@@ -740,8 +745,8 @@ int main(int argc, char *argv[])
     //
     // PT Exchange
     //
-    if (exchange_rate > 0 && ((i + 1) % exchange_rate == 0)) {
-	
+    if (ptexchange != nullptr && exchange_rate > 0 && ((i + 1) % exchange_rate == 0)) {
+      
       int exchanged = ptexchange->step();
       if (exchanged < 0) {
 	ERROR("Failed to do PT exchange\n");
@@ -831,8 +836,10 @@ int main(int argc, char *argv[])
       if (hierarchical_prior != nullptr) {
 	INFO(hierarchical_prior->write_long_stats().c_str());
       }
-      
-      INFO(ptexchange->write_long_stats().c_str());
+
+      if (ptexchange != nullptr) {
+	INFO(ptexchange->write_long_stats().c_str());
+      }
 
       if (resampler != nullptr) {
 	INFO(resampler->write_long_stats().c_str());
@@ -886,8 +893,10 @@ int main(int argc, char *argv[])
       fprintf(fp, hierarchical->write_long_stats().c_str());
       fprintf(fp, "\n");
     }
-    fprintf(fp, ptexchange->write_long_stats().c_str());
-    fprintf(fp, "\n");
+    if (ptexchange != nullptr) {
+      fprintf(fp, ptexchange->write_long_stats().c_str());
+      fprintf(fp, "\n");
+    }
     
     fclose(fp);
     
