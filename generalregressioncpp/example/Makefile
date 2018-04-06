@@ -125,3 +125,18 @@ results_constant_mpi/ch.dat-000 : syntheticobs_constant.txt
 results_constant_mpi/mean.txt : results_constant_mpi/ch.dat-000
 	mpirun -np 4 ../postprocess_mean_mpi -i results_constant_mpi/ch.dat -o $@ \
 	-w 4 -x 5 -y 5 -t 5 -s 50000
+
+#
+# Parallel Gaussian
+#
+results_gaussian_mpi/ch.dat-000 : syntheticobs_gaussian.txt
+	mkdir -p results_gaussian_mpi
+	mpirun -np 4 ../regressiontdtwave2dpt -c 4 -T 1 \
+	-i syntheticobs_gaussian.txt \
+	-M priorproposal.txt \
+	-o results_gaussian_mpi/ \
+	-x 5 -y 5 -t 1000000 -v 10000 -w 4 
+
+results_gaussian_mpi/mean.txt : results_gaussian_mpi/ch.dat-000
+	mpirun -np 4 ../postprocess_mean_mpi -i results_gaussian_mpi/ch.dat -o $@ \
+	-w 4 -x 5 -y 5 -t 15 -s 1500000
