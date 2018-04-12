@@ -10,13 +10,13 @@ TARGETS = datatemplate.txt \
 all : $(TARGETS)
 
 datatemplate.txt :
-	python2 generatetemplatepoints.py -N 100 -o $@
+	python2 ../../scripts/generatetemplatepoints.py -N 100 -o $@
 
 imagetemplateconstant.txt :
-	python2 generatetemplateimage.py -W 32 -H 32 -o $@ -A 0.0
+	python2 ../../scripts/generatetemplateimage.py -W 32 -H 32 -o $@ -A 0.0
 
 imagetemplategaussian.txt :
-	python2 generatetemplateimage.py -W 32 -H 32 -o $@ -m Gaussian
+	python2 ../../scripts/generatetemplateimage.py -W 32 -H 32 -o $@ -m Gaussian
 
 syntheticobs_constant.txt : datatemplate.txt imagetemplateconstant.txt
 	../mksyntheticregression -i imagetemplateconstant.txt -I datatemplate.txt \

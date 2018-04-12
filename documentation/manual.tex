@@ -53,71 +53,129 @@ configued, extraction and compilation can proceed as follows:
 
 \section{Tutorial on Running the Regression Example}
 
+In the {\tt generalregressioncpp/example} directory, there is an example
+synthetic regression problem showing various options for inversion.
+The Makefile in this directory contains the commmands that are described
+in the following paragraphs.
 
-\section{Prior/Proposal Specification}
+\subsection{Creating a synthetic dataset}
 
-\subsection{Values}
-
-A value prior and proposal is specified in a text file with a simple
-fixed format.  The format is:
-
-\begin{verbatim}
-prior <prior name>
-<prior parameters>
-proposal <proposal name>
-<proposal parameters>
-\end{verbatim}
-
-A common starting point for the prior and proposal is to use
-a Uniform prior with a Gaussian proposal. An example below shows
-a prior that could be used in a tomography problem where the model
-parameter represents velocity in km/s:
+The synthetic observation generating program requires a synthetic
+image and a set of sythetic points for a regression problem. Python scripts
+are available to provide both, first for the random points:
 
 \begin{verbatim}
-prior Uniform
-2.0 6.0
-proposal Gaussian
-1.0e-1
+python2 ../../scripts/generatetempatepoints.py -N 100 -o datatemplate.txt
 \end{verbatim}
 
-The Uniform prior has two parameters that represent the bounds of
-the values, that is, values must be between 2.0 and 6.0 in the
-above example. The Gaussian proposal has a single parameter which
-is the standard deviation. Large standard deviations result in
-larger steps taken in the random walk and this value can be
-tuned to obtain more efficient sampling.
+The {\tt -N} option specifies the number of points. By default the domain
+of the points will be -1 $\ldots$ 1 for both $x$ and $y$ directions.
 
-\subsection{Position}
-
-The format for position prior/proposal is slightly different to prevent
-them from being inadvertently used as value prior/proposal. The format
-is 
+Secondly, the image can be generated using
 
 \begin{verbatim}
-sphericalprior <prior name>
-<prior parameters>
-sphericalproposal <proposal name>
-<proposal parameters>
+python2 ../../scripts/generatetemplateimage.py -W 32 -H 32 \
+  -m Gaussian \
+  -o imagetemplategaussian.txt
 \end{verbatim}
 
-The prior will always be {\tt UniformSpherical} which has no parameters
-and the proposal will always be {\tt VonMisesSpherical} which has one
-parameter. An example is shown below:
+The {\tt -W} and {\tt -H} specify the width and height of the image in pixels
+and both must be powers of 2. The {\tt -m} option specifies the synthetic
+model, options are Constant for an homogeneous image and Gaussian for a Gaussian
+hill.
+
+Finally, using these two files as input, synthetic observations can be constructed
+with noise using:
 
 \begin{verbatim}
-sphericalprior UniformSpherical
-sphericalproposal VonMisesSpherical
-1.0e2
+../mksyntheticregression \
+  -i imagetemplategaussian.txt \
+  -I datatemplate.txt \
+  -N 0.05 \
+  -o syntheticobs_gaussian.txt
 \end{verbatim}
 
-The parameter for the {\tt VonMisesSpherical} proposal is the
-concentration parameter which is analogous to the inverse of the
-standard deviation, hence a value of 1.0e2 corresponds approximately
-to a standard deviation of approximately half a degree. As this
-parameter is the inversion of the standard deviation, it will need
-to be increased to improve acceptance rates if they are not satisfactory.
+The {\tt -N} option specifies the level of noise. By default the range of image
+amplitude is between 0 and 1, so 0.05 is a 5\% error level.
 
-\section{Running the programs}
+\subsection{Prior/Proposal Specification}
+The Trans-dimensional tree approach with a wavelet parameterisation adds and removes
+wavelet coeffiecents to a model to represent an image. The wavelet coefficients are
+by construction organised in a hierarchy from coarse to fine length scale. This
+means the prior specification is difficult to tune. The recommended and simplest
+approach to specification of the prior is to use either a fixed or hierarchical
+Laplacian prior as this gives generally good performance and is far simpler to
+specify.
+
+The prior and proposals are specified in a single text file which we give
+an example below (taken from {\tt tutorial/tutorial\_prior.txt})
+
+\begin{verbatim}
+laplace
+0.1
+priorbirth
+depthgaussianperturb
+7
+0.020
+0.020
+0.025
+0.035
+0.050
+0.050
+0.050
+\end{verbatim}
+
+The first two lines specify a Laplacian prior with 0.2 width (similar to standard
+deviation). This 0.2 value may need to be adjusted if a fixed Laplacian prior is
+used in the inversion and birth/death acceptance is poor.
+
+The next line specifies how birth/death proposals are performed, it is
+suggested that this is always left as {\tt priorbirth} meaning new
+wavelet coefficients are sampled from the prior.
+
+The rest of the file specifies the proposal used for change of value
+proposals for wavelet coefficients. The example here, {\tt
+  depthgaussianperturb}, means that each scale length of wavelet
+coefficients is perturbed with a Gaussian proposal with independently
+specified standard deviation. In this example we have specified 7
+levels, however if the wavelet model has more than 7 levels, it uses
+the last level specified for higher levels so this specification
+doesn't need to match the size of the wavelet model.
+
+For tuning the acceptance rates of an inversion, this set of standard
+deviations may need to adjusted to attempt to achieve an acceptance
+rate between 20 and 50 percent. 
+
+\subsection{Serial Inversion}
+
+The way these codes work is that they run for a specified number of
+iterations and output statistical information to a series of files.
+To run a short inversion of the synthetic data, the following
+could be used:
+
+\begin{verbatim}
+mkdir -p results_gaussian
+../regressiontdtwave2d -i syntheticobs_gaussian.txt \
+  -M priorproposal.txt \
+  -o results_gaussian/ \
+  -v 10000 \
+  -x 5 -y 5 -t 1000000 -w 4
+\end{verbatim}
+
+The parameters are described as follows:
+
+\begin{description}
+\item [-i] The observations input file
+\item [-M] The prior/proposal file described in the previous section
+\item [-o] The results file(s) output prefix (append a ``/'') to output to a
+  directory.
+\item [-v] Verbosity or how often the running diagnostics are output
+\item [-x/y] The width and height of the model image expressed as a power of two. In
+  the above example, the image is $2^5$ or 32 by 32 pixels.
+\item [-t] The total number of iterations
+\item [-w] The wavelet basis to use. Ranges from 0 (coarse) to 4 (smooth) bases.
+\end{description}
+
 
 \subsection{Quick Example}
 
