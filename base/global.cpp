@@ -116,13 +116,6 @@ Global::Global(const char *filename,
     throw TDTWAVE2DEXCEPTION("Degree(s) out of range: %d x %d\n", degreex, degreey);
   }
   
-  if (!posteriork) {
-    //
-    // Load observations
-    //
-
-  }
-
   wt = wavetree2d_sub_create(degreex, degreey, 0.0);
   if (wt == NULL) {
     throw TDTWAVE2DEXCEPTION("Failed to create wavetree\n");
@@ -147,6 +140,9 @@ Global::Global(const char *filename,
     }
     workspace = new double[workspacesize];
 
+    //
+    // Load observations
+    //
     int n = strlen(filename);
     nobservations = tdtwave2d_loaddata_(&n, filename, &width, &height);
     if (nobservations < 0) {
