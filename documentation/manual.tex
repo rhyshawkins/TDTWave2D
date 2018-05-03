@@ -1,7 +1,8 @@
 
-\documentclass{article}
+\documentclass[a4paper,12pt]{article}
 
 \usepackage{amsmath}
+\usepackage{natbib}
 
 \begin{document}
 
@@ -10,12 +11,19 @@
 
 \maketitle
 
+\tableofcontents
+
 \section{Introduction}
+
+This software contains a general framework for the inversion of 2D imaging
+problems using a Bayesian Trans-dimensional Tree approach. For an
+introduction to the Trans-dimensional Tree method, see \citet{Hawkins:2015:A}.
+For example geophysical applications of this method \citep{Dettmer:2016:A,Hawkins:2017:A}.
+
+\section{Installation}
 
 The main framework is in the source code in the {\tt base} directory, with a
 demonstration of a regression problem in the {\tt generalregressioncpp} directory.
-
-\section{Installation}
 
 This code is expected to be run on a Unix machine and requires the
 following packages to compile:
@@ -126,7 +134,7 @@ depthgaussianperturb
 \end{verbatim}
 
 The first two lines specify a Laplacian prior with 0.2 width (similar to standard
-deviation). This 0.2 value may need to be adjusted if a fixed Laplacian prior is
+deviation). This 0.1 value may need to be adjusted if a fixed Laplacian prior is
 used in the inversion and birth/death acceptance is poor.
 
 The next line specifies how birth/death proposals are performed, it is
@@ -176,30 +184,45 @@ The parameters are described as follows:
 \item [-w] The wavelet basis to use. Ranges from 0 (coarse) to 4 (smooth) bases.
 \end{description}
 
+In the {\tt results\_gaussian} directory, there will be a number of files written,
+described as follows:
 
-\subsection{Quick Example}
+\begin{description}
+\item[acceptance.txt] the final acceptance rates of the simulation for the different
+  proposal types.
+\item[ch.dat] the chain history (binary)
+\item[final\_model.txt] the final model (useful for continuing Markov chains)
+\item[khistogram.txt] the histogram of the number of wavelet coefficients
+\item[residuals.txt] the mean residuals for each observation.
+\end{description}
 
-This example doesn't do much, but as a quick test you can run
+The most important of these for visualization of the results is the chain
+history file {\tt ch.dat} that contains all the models of the ensemble.
+Information can be extracted from the chain history file with post processing
+commands, for example, to obtain a mean image:
 
 \begin{verbatim}
-> cd generalregressioncpp/example
-> make
-> python ../../scripts/plot_image_ortho.py -f results_constant/mean.txt
-> python ../../scripts/plot_map.py -i results_constant/mean.txt
+../postprocess_mean -i results_gaussian/ch.dat \
+  -s 5000 \
+  -t 10 \
+  -x 5 -y 5 -w 4 \
+  -o results_gaussian/mean.txt
 \end{verbatim}
 
-The make command executes the instructions in the Makefile
-which first generates a synthetic dataset using a script
-and the mksynthetic program. An inversion is run for 50,000
-iterations with output saved to the {\tt results\_constant}
-subdirectory. Finally the post processing command is run to
-compute the mean and standard deviations.
+The mean image is writen in text format and can be visualized simply
+with python, for example
 
-All output from the run is written to the {\tt results\_constant}. This
-includes a {\tt ch.dat} file, the chain history, {\tt acceptance.txt}, the statistics
-of the proposals, and a {\tt khistogram.txt} file.
+\begin{verbatim}
+import numpy
+import matplotlib.pyplot as P
 
-\subsection{Command Options}
+img = numpy.loadtxt('results_gaussian/mean.txt')
+fig, ax = P.subplots()
+ax.imshow(img)
+P.show()
+\end{verbatim}
+
+\subsection{Inversion Command Options}
 
 In the Makefile, you will see the {\tt regressionvoronois2} command in the second
 last block of commands. This program implements the {\tt --help} command line argument
@@ -324,54 +347,21 @@ Birth:     53      1 :   1.89
 Death:     38      1 :   2.63
 \end{verbatim}
 
-
-\subsection{Running on Terrawulf}
-
-There are example PBS submission scripts in the {\tt terrawulf} subdirectory
-included in the source code tar.gz bundle. These can be adapted to run your own
-problems. The PBS scripts are split into two parts, first there is an ``init''
-script, e.g. {\tt pbs\_singlechain\_constant\_init.sh} which is run without
-parameters, i.e.
-
-\begin{verbatim}
-> qsub pbs_singlechain_constant_init.sh 
-\end{verbatim}
-
-and will output files to the {\tt constant\_mpi\_0}. Then, this
-simulation can be continued with with the {\tt pbs\_singlechain\_constant\_cont.sh}
-script by setting the source and destination step, i.e.
-
-\begin{verbatim}
-> qsub -v SRCSTEP=0,DSTSTEP=1 pbs_singlechain_constant_cont.sh
-\end{verbatim}
-
-Which will then start from the previous run started by the ``init'' script and
-output results to {\tt constant\_mpi\_1}. This process can be repeated indefinitely
-until convergence is complete.
-
-The parallel program regularly outputs diagnostic information to log files in the
-output directories, in the above example, progress can be checked by running
-
-\begin{verbatim}
-> tail constant_mpi_0/log.txt-000
-\end{verbatim}
-
-which should show diagnostic information including current iteration number and
-acceptance rates.
-
 \section{Writing Custom Applications}
 
 \subsection{Background}
 
-For a custom application, the Likelihood function needs to be defined, which
-includes any forward modelling. The way the generic part of the code is formulated
-is that it is assume that an observation needs to know the value of the model
-at a certain number of points (at least one) on the globe. A forward model
+For a custom application, the Likelihood function needs to be defined, which can
+include any forward modelling.
+The way the generic part of the code is formulated is that it is assumed that each
+observation needs to know the model image. A forward model
 can take the values of the model at each point and compute a prediction. For
 example, in a tomographic forward model, the ray path integral can be approximated by a discrete
-summation to compute a travel time prediction. Lastly, the prediction is then
-compared to the observation and a probabilisitic likelihood can be computed, commonly
-an indepedent Gaussian likelihood, that is
+summation to compute a travel time prediction.
+
+Lastly, the prediction is then compared to the observation and a
+probabilisitic likelihood can be computed, commonly an indepedent
+Gaussian likelihood, that is
 
 \begin{equation}
   p(\mathbf{d}|\mathbf{m}) = \frac{1}{\sqrt{2 \pi} \prod_{i=1}^N \sigma_i} \exp \left\{
@@ -379,9 +369,9 @@ an indepedent Gaussian likelihood, that is
     ,
 \end{equation}
 
-where $G(\mathbf{m})_i$ is the prediction, $d_i$ is the observation, $\sigma_i$ is the
-error on the observation. For accuracy, the negative log likelihood is used and separated
-into
+where $G(\mathbf{m})_i$ is the prediction, $d_i$ is the observation,
+$\sigma_i$ is the error on the observation. For accuracy, the negative
+log likelihood is used and separated into
 
 \begin{align}
   \label{eqn:like}
@@ -394,49 +384,22 @@ into
 and these are called {\tt like} and {\tt norm} in the code
 respectively. To implement a custom application, you first need to
 derive the likelihood and the operation of the forward model based
-model values at longitude, latitude coordinates on the surface of a
-sphere.
+on the model image.
 
 \subsection{Loading data}
 
-The data file format is entirely in the control of the programmer. The command line
-application is passed a filename to load, and this is passed onto the load function
+The data file format is entirely in the control of the programmer.
+The command line application is passed a filename to load, and this is passed onto the load function
 directly. This file could be a raw data file or a configuration file that points
 to a series of files that require loading for the inverse problem. This function
-should perform two main functions: firstly to load all necessary data for subsequent
-calculation of predictions and the likelihood, and secondly to tell the generic
-code the points to be evaluated for each observation. The interface is as follows:
+must load all necessary data for subsequent calculation of predictions and the likelihood. The
+interface is as follows:
 
 \begin{verbatim}
-  typedef int (gvs2_addobservation_t)(int *npoints,
-                                      double *lons,
-                                      double *lats);
-  int gvs2_loaddata_(int *n,
-                     const char *filename,
-                     gvs2_addobservation_t addobs);
-\end{verbatim}
-
-or
-
-\begin{verbatim}
-  function gvs2_loaddata_(n, filename, addobs) bind(c)
-
-    integer, intent(in) :: n
-    character, dimension(n), intent(in) :: filename
-
-    interface iaddobs
-       function addobs(npoints, lons, lats) bind(c)
-         use iso_c_binding
-         integer :: addobs
-         integer, intent(in) :: npoints
-         real(kind = c_double), dimension(npoints), intent(in) :: lons
-         real(kind = c_double), dimension(npoints), intent(in) :: lats
-       end function addobs
-    end interface iaddobs
-   
-    integer :: gvs2_loaddata_
-
-  end function
+  int tdtwave2d_loaddata_(int *n,
+                          const char *filename,
+                          int *width,
+                          int *height);
 \end{verbatim}
 
 The parameters are
@@ -444,20 +407,12 @@ The parameters are
 \begin{description}
 \item[n] The length of the filename string
 \item[filename] The filename to load
-\item[addobs] A callback function used to register the points in longitude/latitude for each
-  observation.
+\item[width] The width of the model image
+\item[height] The height of the model image
 \end{description}
 
-The first two parameters are self explanatory with a minor point being that due
-to C++/fortran differences in string representations, the filename needs to be
-converted to a fortran string when calling {\tt open} (see the two fortran
-examples and the {\tt copystring} function therein to see how to do this).
-
-The {\tt addobs} callback function must be called once and only once for each
-observation. The parameters that need to be specified are, the number of
-points ({\tt npoints}) which should be 1 or more, and two arrays containing
-the longitude and latitude of each point needed to compute the prediction
-for an observation.
+The first parameter is only needed for Fortran problems. This is also the reason
+that the integer parameters are passed as pointers.
 
 It is up to the custom application to permanently store any data
 necessary for the likelihood or calculation of predictions in this
@@ -469,30 +424,17 @@ error.  This will subsequently terminate the main program.
 \subsection{Computing predictions}
 
 The next function that needs to be implemented is the function that computes
-the predictions for a single observation. The C++ and fortran interfaces for this function
-are shown below
+the predictions for a single observation. The C interface for this function
+is shown below
 
 
 \begin{verbatim}
-  int gvs2_compute_prediction_(int *observation,
-                               int *npoints,
-                               const double *value,
-                               double *unused,
-                               double *prediction);
-\end{verbatim}
-
-\begin{verbatim}
-  function gvs2_compute_prediction_(observationidx, npoints, values, unused, prediction) bind (c)
-    use iso_c_binding
-    
-    integer, intent(in) :: observationidx
-    integer, intent(in) :: npoints
-    real(kind = c_double), dimension(npoints), intent(in) :: values
-    real(kind = c_double), dimension(npoints), intent(out) :: unused
-    real(kind = c_double), intent(out) :: prediction
-
-    integer :: gvs2_compute_prediction_
-  end function
+  int tdtwave2d_compute_prediction_(int *observation,
+                                    int *width, 
+                                    int *height,
+                                    const double *value,
+                                    double *unused,
+                                    double *prediction);
 \end{verbatim}
 
 The function passes in a observation index from 0 to the number of
@@ -506,37 +448,22 @@ stored in the scalar prediction variable. This should be a value for regression
 type problems or a travel time for tomography type problems. There is an unused
 array currently in the code to allow for future improved functionality.
 
-The function should return zero on success and negative one if there is an error.
+The function should return zero on success and negative one if there
+is an error.
 
 \subsection{Computing the likelihood}
 
-The C++ and fortran interfaces for the function that needs to be implemented
-to compute the likelihood are below:
+The C++ interfaces for the function that needs to be implemented to
+compute the likelihood are below:
 
 \begin{verbatim}
-  int gvs2_compute_likelihood_(int *nobservation,
-                               double *hvalue,
-                               double *predictions,
-                               double *residuals,
-                               double *unused,
-                               double *like,
-                               double *norm);
-\end{verbatim}
-
-\begin{verbatim}
-  function gvs2_compute_likelihood_(nobservation, hvalue, predictions, residuals, unused, like, norm) bind (c)
-    use iso_c_binding
-    
-    integer, intent(in) :: nobservation
-    real(kind = c_double), intent(in) :: hvalue
-    real(kind = c_double), dimension(nobservation), intent(in) :: predictions
-    real(kind = c_double), dimension(nobservation), intent(out) :: residuals
-    real(kind = c_double), dimension(nobservation), intent(out) :: unused
-    real(kind = c_double), intent(out) :: like
-    real(kind = c_double), intent(out) :: norm
-
-    integer :: gvs2_compute_likelihood_
-  end function
+  int tdtwave2d_compute_likelihood_(int *nobservation,
+                                    double *hvalue,
+                                    double *predictions,
+                                    double *residuals,
+                                    double *unused,
+                                    double *like,
+                                    double *norm);
 \end{verbatim}
 
 The input variables are
@@ -574,24 +501,11 @@ For synthetic model generation useful for testing, an additional function needs 
 implemented with the C++ and fortran interfaces below
 
 \begin{verbatim}
-  int gvs2_savedata_(int *n,
-                     const char *filename,
-                     double *noiselevel,
-                     int *nobservations,
-                     double *predictions);
-\end{verbatim}
-
-\begin{verbatim}
-  function gvs2_savedata_(n, filename, noiselevel, nobservation, predictions) bind(c)
-
-    integer, intent(in) :: n
-    character, dimension(n), intent(in) :: filename
-
-    real(kind = c_double), intent(in) :: noiselevel
-    integer, intent(in) :: nobservation
-    real(kind = c_double), dimension(nobservation), intent(in) :: predictions
-
-    integer :: gvs2_savedata_
+  int tdtwave2d_savedata_(int *n,
+                          const char *filename,
+                          double *noiselevel,
+                          int *nobservations,
+                          double *predictions);
 \end{verbatim}
 
 The parameter {\tt n} and {\tt filename} specify the length and the name
@@ -602,8 +516,8 @@ outputting the true observations). Lastly the {\tt nobservations} and
 predictions that are to be output as the observations.
 
 For synthetic model general (see the file {\tt mksynthetic.cpp}), a
-template observation file will be loaded by calling {\tt gvs2\_loaddata\_}
-followed by {\tt gvs2\_compute\_prediction\_} 
+template observation file will be loaded by calling {\tt tdtwave2d\_loaddata\_}
+followed by {\tt tdtwave2d\_compute\_prediction\_} 
 
 \subsection{Parallel implementation}
 
@@ -613,18 +527,18 @@ evenly split between processors and residuals computed. The results are gathered
 a single processor where the likelihood is computed. In summary
 
 \begin{itemize}
-\item {\tt gvs2\_loaddata\_} is called by all processes at the beginning before
+\item {\tt tdtwave2d\_loaddata\_} is called by all processes at the beginning before
   the iterations begin
-\item {\tt gvs2\_compute\_prediction\_} is called for a subset of the observations
+\item {\tt tdtwave2d\_compute\_prediction\_} is called for a subset of the observations
   on each processor
-\item {\tt gvs2\_compute\_likelihood\_} is called by one processor (as it is
+\item {\tt tdtwave2d\_compute\_likelihood\_} is called by one processor (as it is
   generally a trivial summation over the residuals).
 \end{itemize}
 
 \subsection{Recommendations}
 
-The simplest path to starting a custom application is to copy one of
-the C++/fortran examples for regression or tomography and use that as
+The simplest path to starting a custom application is to copy 
+the C++ regression example and use that as
 a template.
 
 For each of these examples, there is an example subdirectory
@@ -642,5 +556,9 @@ has a Makefile that
 
 Both the source code for these programs and the simple examples provide good
 starting points for creating custom applications.
+
+
+\bibliography{bibliography}
+\bibliographystyle{plainnat}
 
 \end{document}
