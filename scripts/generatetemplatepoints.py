@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     f = open(args.output, 'w')
 
-    f.write('%15.9f %15.9f %15.9f %15.9f\n' % (args.minx, args.miny, args.maxx, args.maxy))
+    f.write('%15.9f %15.9f\n%15.9f %15.9f\n' % (args.minx, args.maxy, args.miny, args.maxy))
 
     f.write('%d\n' % args.observations)
 

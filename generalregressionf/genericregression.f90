@@ -119,14 +119,14 @@ contains
 
        ix = int((obs(i)%lon(1) - minlon)/(maxlon - minlon) * real(width))
        if ((ix .lt. 0) .or. (ix .ge. width)) then
-          write (*,*) "Longitude out of range"
+          write (*,*) "Longitude out of range", obs(i)%lon(1), minlon, maxlon
           tdtwave2d_loaddata_ = -1
           return
        end if
        
        iy = int((obs(i)%lat(1) - minlat)/(maxlat - minlat) * real(height))
        if ((iy .lt. 0) .or. (iy .ge. width)) then
-          write (*,*) "Latitude out of range"
+          write (*,*) "Latitude out of range", obs(i)%lat(1), minlat, maxlat
           tdtwave2d_loaddata_ = -1
           return
        end if
@@ -138,9 +138,9 @@ contains
     close(FUNIT)
 
     !
-    ! Return 0 for success
+    ! Return +ve number of observations for success
     !
-    tdtwave2d_loaddata_ = 0
+    tdtwave2d_loaddata_ = nobs
     
   end function tdtwave2d_loaddata_
 
