@@ -10,21 +10,23 @@ TARGETS = datatemplate.txt \
 all : $(TARGETS)
 
 datatemplate.txt :
-	python2 ../../scripts/generatetemplatepaths.py -N 100 -o $@
+	python2 ../../scripts/generatetemplatepaths.py -N 100 --samples 2 -o $@ \
+	--minx -10 --maxx 10 \
+	--miny -10 --maxy 10
 
 imagetemplateconstant.txt :
-	python2 ../../scripts/generatetemplateimage.py -W 32 -H 32 -o $@ -A 0.0
+	python2 ../../scripts/generatetemplateimage.py -W 32 -H 32 -o $@ -A 3.0
 
 imagetemplategaussian.txt :
-	python2 ../../scripts/generatetemplateimage.py -W 32 -H 32 -o $@ -m Gaussian
+	python2 ../../scripts/generatetemplateimage.py -W 32 -H 32 -o $@ -m Gaussian -A 2.0 -O 2.5
 
 syntheticobs_constant.txt : datatemplate.txt imagetemplateconstant.txt
 	../mksynthetictomography -i imagetemplateconstant.txt -I datatemplate.txt \
-	-o $@ -N 0.05
+	-o $@ -N 5.0
 
 syntheticobs_gaussian.txt : datatemplate.txt imagetemplategaussian.txt
 	../mksynthetictomography -i imagetemplategaussian.txt -I datatemplate.txt \
-	-o $@ -N 0.05
+	-o $@ -N 5.0
 
 #
 # Serial Constant True model

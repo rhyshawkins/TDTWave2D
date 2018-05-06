@@ -3,14 +3,14 @@ import sys
 import argparse
 import numpy
 
-def model_constant(amplitude, scale, nx, ny):
+def model_constant(amplitude, offset, scale, nx, ny):
 
-    return amplitude
+    return amplitude + offset
 
-def model_gaussian(amplitude, scale, nx, ny):
+def model_gaussian(amplitude, offset, scale, nx, ny):
 
     r2 = (nx*nx + ny*ny)/(2.0 * scale*scale)
-    return numpy.exp(-r2) * amplitude
+    return numpy.exp(-r2) * amplitude + offset
 
 MODELS = {'Constant' : model_constant,
           'Gaussian' : model_gaussian}
@@ -26,6 +26,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-A', '--amplitude', type = float, default = 1.0, help = 'Amplitude')
     parser.add_argument('-S', '--scale', type = float, default = 1.0, help = 'Scale')
+    parser.add_argument('-O', '--offset', type = float, default = 0.0, help = 'Offset')
     
     parser.add_argument('-m', '--model', type = str, default = 'Constant', help = 'Model name')
 
@@ -69,7 +70,7 @@ if __name__ == '__main__':
             
             nx = -1.0 + 2.0 * (float(i) + 0.5)/float(args.width)
 
-            f.write('%15.9f ' % func(args.amplitude, args.scale, nx, ny))
+            f.write('%15.9f ' % func(args.amplitude, args.scale, args.offset, nx, ny))
 
         f.write('\n')
             

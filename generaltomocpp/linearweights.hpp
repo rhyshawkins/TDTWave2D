@@ -49,8 +49,9 @@ public:
     // Compute a reasonable threshold distance between points
     //
     double threshold = 1.5 * (xmax - xmin)/(double)width * M_PI/180.0 * radius;
-
-    if (gc_dist(x0, y0, x1, y1, radius) < threshold) {
+    double dist = gc_dist(x0, y0, x1, y1, radius);
+    
+    if (dist < threshold) {
       
       return add_linesegment(x0, y0,
 			     x1, y1,
@@ -103,14 +104,14 @@ public:
 			   radius);
   }
 
-  double evaluate_velocityfield(const double *image) const
+  double evaluate_velocityfield(double offset, const double *image) const
   {
     double ttime = 0.0;
 
     // Weight is distance so travel time equals sum weight[i]/image[index[i]]
     for (auto &w: weights) {
 
-      ttime += w.weight/image[w.idx];
+      ttime += w.weight/(image[w.idx] + offset);
       
     }
 

@@ -21,9 +21,13 @@ struct model_bounds {
   double maxlat;
   double maxlon;
 };
+
+static constexpr double RADIUS = 6371.0;
   
 static struct model_bounds bounds;
 static std::vector<struct observation> obs;
+
+static double mean_offset = 0.0;
 
 extern "C" {
 
@@ -32,6 +36,8 @@ extern "C" {
 			  int *width,
 			  int *height)
   {
+    printf("here\n");
+    
     FILE *fp = fopen(filename, "r");
     if (fp == NULL) {
       return -1;
@@ -39,8 +45,8 @@ extern "C" {
 
     if (fscanf(fp, "%lf %lf %lf %lf\n",
 	       &bounds.minlon,
-	       &bounds.minlat,
 	       &bounds.maxlon,
+	       &bounds.minlat,
 	       &bounds.maxlat) != 4) {
       return -1;
     }
@@ -51,6 +57,7 @@ extern "C" {
     }
 
     obs.resize(nobs);
+    mean_offset = 0.0;
     for (int i = 0; i < nobs; i ++) {
 
       int npoints;
@@ -77,9 +84,9 @@ extern "C" {
 	}
       }
 
-      obs[i].weights.clear()
+      obs[i].weights.clear();
       for (int j = 1; j < npoints; j ++) {
-	if (!obs[i].weigths.compute_weights(bounds.minlon, bounds.maxlon,
+	if (!obs[i].weights.compute_weights(bounds.minlon, bounds.maxlon,
 					    bounds.minlat, bounds.maxlat,
 					    *width, *height,
 					    RADIUS,
@@ -89,8 +96,18 @@ extern "C" {
 	  return -1;
 	}
       }
+
+      if (obs[i].value > 0.0) {
+	mean_offset += obs[i].weights.total_weight()/obs[i].value;
+      }
     }
 
+    if (mean_offset > 0.0) {
+      mean_offset /= (double)nobs;
+    }
+
+    printf("Mean velocity: %10.6f\n", mean_offset);
+    
     fclose(fp);
     return nobs;
   }
@@ -104,7 +121,7 @@ extern "C" {
   {
     if ((*observation) < (int)obs.size()) {
       
-      prediction[0] = obs[*observation].evaluate_velocityfield(image);
+      prediction[0] = obs[*observation].weights.evaluate_velocityfield(mean_offset, image);
 			    
       return 0;
     }
@@ -153,15 +170,21 @@ extern "C" {
 
     fprintf(fp, "%15.9f %15.9f %15.9f %15.9f\n",
 	    bounds.minlon,
-	    bounds.minlat,
 	    bounds.maxlon,
+	    bounds.minlat,
 	    bounds.maxlat);
 	
     fprintf(fp, "%d\n", (int)obs.size());
     int i = 0;
     for (auto &o : obs) {
-      fprintf(fp, "%16.9f %16.9f %16.9f %16.9f\n",
-	      o.lon, o.lat, predictions[i], noiselevel[0]);
+      
+      fprintf(fp, "%16.9f %16.9f %d\n",
+	      predictions[i], noiselevel[0], (int)o.lon.size());
+
+      for (int j = 0; j < (int)o.lon.size(); j ++) {
+	fprintf(fp, "%16.9f %16.9f\n", o.lon[j], o.lat[j]);
+      }
+
       i ++;
     }
 
