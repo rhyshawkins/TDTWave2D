@@ -31,11 +31,11 @@ LIBS = -L$(BASELIB)/hnk -lhnk \
 	$(shell gsl-config --libs) \
 	-lgmp
 
-TARGETOBJS = genericregression.o
+TARGETOBJS = generictomography.o
 
-TARGETS = mksyntheticregression \
-	regressiontdtwave2d \
-	regressiontdtwave2dpt
+TARGETS = mksynthetictomography \
+	tomographytdtwave2d \
+	tomographytdtwave2dpt
 
 POSTPROCESS = postprocess_khistory \
 	postprocess_likelihood \
@@ -46,19 +46,19 @@ POSTPROCESS = postprocess_khistory \
 
 all : $(TARGETS) $(POSTPROCESS)
 
-genericregression.o : genericregression.cpp
+generictomography.o : generictomography.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 ../base/%.o : ../base/%.cpp
 	make -C ../base  $*.o
 
-mksyntheticregression : $(TARGETOBJS) $(BASEOBJS) ../base/mksyntheticobservations.o
+mksynthetictomography : $(TARGETOBJS) $(BASEOBJS) ../base/mksyntheticobservations.o
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/mksyntheticobservations.o $(LIBS)
 
-regressiontdtwave2d : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert.o 
+tomographytdtwave2d : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert.o 
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert.o $(LIBS)
 
-regressiontdtwave2dpt : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert_pt.o 
+tomographytdtwave2dpt : $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert_pt.o 
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../base/tdtwave2dinvert_pt.o $(LIBS)
 
 postprocess_khistory : $(TARGETOBJS) $(BASEOBJS) ../base/postprocess_khistory.o 

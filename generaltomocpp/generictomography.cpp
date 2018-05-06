@@ -4,12 +4,15 @@
 
 #include "genericinterface.hpp"
 
+#include "linearweights.hpp"
+
 struct observation {
-  double lon;
-  double lat;
   double value;
   double sigma;
-  int vidx;
+
+  std::vector<double> lon;
+  std::vector<double> lat;
+  LinearWeights weights;
 };
 
 struct model_bounds {
@@ -49,28 +52,43 @@ extern "C" {
 
     obs.resize(nobs);
     for (int i = 0; i < nobs; i ++) {
-      if (fscanf(fp, "%lf %lf %lf %lf\n",
-		 &obs[i].lon,
-		 &obs[i].lat,
+
+      int npoints;
+      if (fscanf(fp, "%lf %lf %d\n",
 		 &obs[i].value,
-		 &obs[i].sigma) != 4) {
+		 &obs[i].sigma,
+		 &npoints) != 3) {
 	return -1;
       }
 
-      int ii = (int)((obs[i].lon - bounds.minlon)/(bounds.maxlon - bounds.minlon) * (double)(*width));
-      if (ii < 0 || ii >= (*width)) {
-	fprintf(stderr, "error: point %10.6f out of range\n", obs[i].lon);
+      if (npoints <= 1) {
+	fprintf(stderr, "error: need at least two points for a path\n");
 	return -1;
       }
 
-      int ij = (int)((obs[i].lat - bounds.minlat)/(bounds.maxlat - bounds.minlat) * (double)(*height));
-      if (ij < 0 || ij >= (*height)) {
-	fprintf(stderr, "error: point %10.6f out of range\n", obs[i].lat);
-	return -1;
-      }
-
-      obs[i].vidx = ii + ij * (*width);
+      obs[i].lon.resize(npoints);
+      obs[i].lat.resize(npoints);
       
+      for (int j = 0; j < npoints; j ++) {
+	if (fscanf(fp, "%lf %lf\n",
+		   &obs[i].lon[j],
+		   &obs[i].lat[j]) != 2) {
+	  return -1;
+	}
+      }
+
+      obs[i].weights.clear()
+      for (int j = 1; j < npoints; j ++) {
+	if (!obs[i].weigths.compute_weights(bounds.minlon, bounds.maxlon,
+					    bounds.minlat, bounds.maxlat,
+					    *width, *height,
+					    RADIUS,
+					    obs[i].lon[j - 1], obs[i].lat[j - 1],
+					    obs[i].lon[j], obs[i].lat[j])) {
+	  fprintf(stderr, "error: failed to compute weights for path\n");
+	  return -1;
+	}
+      }
     }
 
     fclose(fp);
@@ -86,7 +104,7 @@ extern "C" {
   {
     if ((*observation) < (int)obs.size()) {
       
-      prediction[0] = image[obs[*observation].vidx];
+      prediction[0] = obs[*observation].evaluate_velocityfield(image);
 			    
       return 0;
     }
