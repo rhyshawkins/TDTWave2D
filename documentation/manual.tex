@@ -23,7 +23,9 @@ For example geophysical applications of this method \citep{Dettmer:2016:A,Hawkin
 \section{Installation}
 
 The main framework is in the source code in the {\tt base} directory, with a
-demonstration of a regression problem in the {\tt generalregressioncpp} directory.
+demonstration of a regression problem in the {\tt generalregressioncpp} directory,
+a linearized tomography surface wave problem in the {\tt generaltomocpp} directory,
+and a Fortran regression problem example in {\tt generalregressionf} directory..
 
 This code is expected to be run on a Unix machine and requires the
 following packages to compile:
@@ -57,6 +59,8 @@ configued, extraction and compilation can proceed as follows:
 > cd TDTWave2D
 > make -C base
 > make -C generalregressioncpp
+> make -C generaltomocpp 
+> make -C generalregressionf
 \end{verbatim}
 
 \section{Tutorial on Running the Regression Example}
@@ -107,25 +111,24 @@ The {\tt -N} option specifies the level of noise. By default the range of image
 amplitude is between 0 and 1, so 0.05 is a 5\% error level.
 
 \subsection{Prior/Proposal Specification}
+
 The Trans-dimensional tree approach with a wavelet parameterisation adds and removes
-wavelet coeffiecents to a model to represent an image. The wavelet coefficients are
-by construction organised in a hierarchy from coarse to fine length scale. This
-means the prior specification is difficult to tune. The recommended and simplest
+wavelet coefficients to a wavelet model that can represent an image. The wavelet coefficients,
+by construction, are organised in a hierarchy from coarse to fine length scale. This
+means the prior specification is non-intuitive. The recommended and simplest
 approach to specification of the prior is to use either a fixed or hierarchical
 Laplacian prior as this gives generally good performance and is far simpler to
 specify.
 
 The prior and proposals are specified in a single text file which we give
-an example below (taken from {\tt tutorial/tutorial\_prior.txt})
+an example below (taken from {\tt generalregressioncpp/example/priorproposal.txt})
 
 \begin{verbatim}
 laplace
 0.1
 priorbirth
 depthgaussianperturb
-7
-0.020
-0.020
+5
 0.025
 0.035
 0.050
@@ -133,7 +136,7 @@ depthgaussianperturb
 0.050
 \end{verbatim}
 
-The first two lines specify a Laplacian prior with 0.2 width (similar to standard
+The first two lines specify a Laplacian prior with 0.1 width (similar to standard
 deviation). This 0.1 value may need to be adjusted if a fixed Laplacian prior is
 used in the inversion and birth/death acceptance is poor.
 
@@ -145,8 +148,8 @@ The rest of the file specifies the proposal used for change of value
 proposals for wavelet coefficients. The example here, {\tt
   depthgaussianperturb}, means that each scale length of wavelet
 coefficients is perturbed with a Gaussian proposal with independently
-specified standard deviation. In this example we have specified 7
-levels, however if the wavelet model has more than 7 levels, it uses
+specified standard deviation. In this example we have specified 5
+levels, however if the wavelet model has more than 5 levels, it uses
 the last level specified for higher levels so this specification
 doesn't need to match the size of the wavelet model.
 
@@ -196,7 +199,7 @@ described as follows:
 \item[residuals.txt] the mean residuals for each observation.
 \end{description}
 
-The most important of these for visualization of the results is the chain
+The most important of these for analysis/visualization of the results is the chain
 history file {\tt ch.dat} that contains all the models of the ensemble.
 Information can be extracted from the chain history file with post processing
 commands, for example, to obtain a mean image:
@@ -208,6 +211,18 @@ commands, for example, to obtain a mean image:
   -x 5 -y 5 -w 4 \
   -o results_gaussian/mean.txt
 \end{verbatim}
+
+The various parameters here are descibed as follows
+
+\begin{description}
+\item[-i] The input chain history file
+\item[-s] The number of models to skip from the processing (i.e. burnin samples that
+  are thrown away).
+\item[-t] Thinning, or in the example above, only every tenth model is used.
+\item[-x/y] The size of the image (this must match the inversion).
+\item[-w] The wavelet basis to use (this must match the inversion).
+\item[-o] The output mean image to write.
+\end{description}
 
 The mean image is writen in text format and can be visualized simply
 with python, for example
@@ -222,142 +237,70 @@ ax.imshow(img)
 P.show()
 \end{verbatim}
 
-\subsection{Inversion Command Options}
+\subsection{Further examples}
 
-In the Makefile, you will see the {\tt regressionvoronois2} command in the second
-last block of commands. This program implements the {\tt --help} command line argument
-which describes possible parameters to the programs. We describe the
-important ones here, firstly for the two simulation programs {\tt regressionvoronois2}
-and {\tt regressionvoronois2pt}
-
-\begin{description}
-\item [-i$|$--input $<$filename$>$] The data to load (required)
-\item [-I$|$--initial $<$filename/path$>$] The initial model(s) to load. For the serial version,
-  this is a filename, for the parallel version, this is a path to where a previous parallel
-  program outputted its final models.
-\item [-o$|$--output $<$path$>$] The output prefix or path to write output files to. You must include
-  a trailing ``/'' if you want the files in a directory and the directory must exist before starting.
-\item [-P$|$--prior $<$filename$>$] Load a prior for the values from the given filename.
-\item [-M$|$--move-prior $<$filename$>$] Load a prior for the positions from the given filename.
-\item [-H$|$--hierarchical-prior $<$filename$>$] Load a prior for the hierarchical scaling parameter. If a
-  hierarchical prior is specified, then this enables hierarchical parameter estimation as part of the
-  sampling process.
-\item [-t$|$--total $<$int$>$] The total number of iterations to run for.
-\item [-v$|$--verbosity $<$int$>$] The number of iterations between logging the status of the simulation.
-\item [-l$|$--lambda $<$float$>$] The initial or fixed hierarchical scale parameter for the noise. The noise
-  model is independent Gaussian with a standard deviation of $\lambda \sigma_d$ where $\lambda$ is
-  the hierarchical scaling parameter and $\sigma_d$ is the noise specified in the input data file.
-\item [-T$|$--max-cells $<$int$>$] The maximum number of Voronoi cells.
-\end{description}
-
-For the parallel version, there is the extra parameter which controls how the multiple
-processes are used in the simulation:
-
-\begin{description}
-\item [-c$|$--chains $<$int$>$] The number of independent chains to run.
-\end{description}
-
-In a parallel run, you will have some number of processes and this can be divided up
-into multiple chains or (the default) you can run a single chain and use the
-multiple processes to speed up computation of the likelihood function. For example,
-the command:
-
-\begin{verbatim}
-mpirun -np 12 ./regressionvoronois2pt <misc. arguments> -c 3
-\end{verbatim}
-
-will run in parallel on 12 processes with 3 indepedent chains. Each of the chains
-will compute the likelihood using 4 parallel processes. It should be clear that
-the number of chains must be an integer factor of the number of processes.
-
-For the post processing programs, they all have some common command line arguments:
-
-\begin{description}
-\item[-i$|$--input $<$filename$>$] The input {\tt ch.dat} chain history file to process.
-\item[-i$|$--output $<$filename$>$] The output file (depends on which program as to what it is)
-\item[-t$|$--thin $<$int$>$] Only process every nth model. A value of 1 or 0 means process every
-  model in the chain.
-\item[-s$|$--skip $<$int$>$] Start processing after the nth model.
-\end{description}
-
-If hierarchical noise estimation is done, the {\tt postS2Voronoi\_likelihood} has an option
-to output the hierarchical parameter history as well:
-
-\begin{description}
-\item[-H$|$--hierarchical $<$filename$>$] Output the hierarchical history
-\end{description}
-
-The mean post processing command takes a number of extra arguments
-
-\begin{description}
-\item [-m$|$--median $<$filename$>$] Output the median model to the specified file. The median model is computed from the histogram.
-\item [-M$|$--mode $<$filename$>$] Output the modal model to the specified file. The median model is computed from the histogram.
-\item [-T$|$--stddev $<$filename$>$] Output the standard deviation of the ensemble to the specified file.
-\item [-V$|$--variance $<$filename$>$] Output the variance of the ensemble to the specified file.
-\item [-e$|$--credmin $<$filename$>$] Credible minimum based on the 95\% credible interval. This is computed from the histogram.
-\item [-E$|$--credmax $<$filename$>$] Credible maximum based on the 95\% credible interval. This is computed from the histogram.
-\item [-g$|$--histogram $<$filename$>$] Output the histogram to the specified file.
-
-\item [-b$|$--histogram-bins $<$int$>$] No. bins in histogram
-\item [-z$|$--zmin $<$float$>$] Min value of histogram
-\item [-Z$|$--zmax $<$float$>$] Max value of histogram
-
-\item [-W$|$--lonsamples $<$int$>$]       No. samples in longitude direction
-\item [-H$|$--latsamples $<$int$>$]       No. samples in latitude direction
-\end{description}
-
-Care should be taken in setting the range of the histogram and the
-number of bins as this can adversely affect the mode, median, and
-credible outputs. The images are computed on a regular lon/lat grid
-and increasing the resolution of this grid can increase the time it
-takes to do the post processing.
-
-The convert to text program takes no other arguments, it simply
-outputs the model as a text file with each line of the format:
-
-\begin{verbatim}
-<iteration> <likelihood> <nhierarchical> <hierarchical parameter>*nhierarhical
-<ncells> <cell phi> [<cell theta> <cell value>]*ncells
-\end{verbatim}
-
-where {\tt phi} is the colatitude in radians and {\tt theta} is the longitude in radians.
-
-In general the likelihood and convert to text program are quick to run. The program for
-generating the mean, if the number of Voronoi cells or the resolution requested is large,
-can take quite a while. It is recommended to use a combination of lower resolution and
-higher thinning for test runs when looking at the 
-
+Several other use cases of the commands described above are shown in the
+{\tt generalregressioncpp/example/Makefile} file, including examples
+of running parallel the version.
+  
 \subsection{Diagnostics}
 
-The program will output log messages periodically depending on the verbosity level (default is
-every 1000 iterations). This information includes the time which is useful for estimation of
-remaining running time by looking at the time difference between two log outputs.
-The first line contains the iterations number (1000), the number of Cells, the current negative log likelihood,
-and the hierarchical scaling parameter. The second line shows the number of proposals, the number of
-accepted proposals and the percentage acceptance rate for each of the proposal types. An example of
-the output is shown below (with text wrapped to fit the page)
+The program will output log messages periodically depending on the
+verbosity level (default is every 1000 iterations). This information
+includes the time which is useful for estimation of remaining running
+time by looking at the time difference between two log outputs.  The
+first line contains the iterations number (10000), the current
+negative log likelihood with the misfit (46.4) and normalization shown
+in brackets (-300). The next number (51) is the number of wavelet
+coefficients, followed by the dc or mean of the model image. Lambda is
+the hierarchical scaling parameter, and T is the temperature.  An
+abridged example of the output is shown below
 
+{
+  \tiny
 \begin{verbatim}
-2016-08-19 11:32:22:info:generalvoronois2pt.cpp:main: 426: 1000: 
-Cells 1 Likelihood 221.591343 Lambda   1.000000
-2016-08-19 11:32:22:info:generalvoronois2pt.cpp:main: 429:         
-Value:    696    219 :  31.47
- Move:    213    208 :  97.65
-Birth:     53      1 :   1.89
-Death:     38      1 :   2.63
+2018-05-14 01:29:11:...:000  10000: 46.446122(-300.492166) 51 dc 0.723397 lambda 1.000000 T 1.000000:
+2018-05-14 01:29:11:...:Birth:    516  49.806:  0.000  33.333  27.273  22.581  52.121  76.687 
+2018-05-14 01:29:11:...:Death:    500  41.400:  0.000   0.000  15.909  16.854  41.463  68.023 
+2018-05-14 01:29:11:...:Value:   8984  47.362: 29.804  17.532  22.280  44.542  71.097  76.858 
 \end{verbatim}
+}
+
+A key component of monitoring these inversions is the acceptance
+rates, particularly for the value proposals. In the example output
+above, the last line shows the statistics for the value proposals. The
+first number is the number of value proposals so far, the next number
+before the colon is the average acceptance rate across the hierarchcy
+of wavelet coefficients. The remaining numbers are the individual
+acceptance rates at each level, in this case levels 0 $\ldots$
+5. Ideally, the acceptace rates for these coefficients should be
+between approximately 20 and 50 percent and this is especially
+important for levels 0, 1, 2, and maybe 3. It is often the case that
+the value proposal acceptance rates for higher levels is high, but of
+little importance.
+
+To tune these acceptance rates, editing of the {\tt priorproposal.txt}
+file may be required. To lower the acceptance rate, in the case where it is too
+high, the standard deviation of the particular level must be increased. The
+reverse is true when the acceptance rate is too low, i.e. the standard deviation
+of the perturbation should be decreased.
 
 \section{Writing Custom Applications}
 
+Each of the example applications are written as custom applications and as such
+can be used as templates for incorporating your own physical modelling or
+likelihood functions into an trans-dimensional tree inversion.
+
 \subsection{Background}
 
-For a custom application, the Likelihood function needs to be defined, which can
-include any forward modelling.
-The way the generic part of the code is formulated is that it is assumed that each
-observation needs to know the model image. A forward model
-can take the values of the model at each point and compute a prediction. For
-example, in a tomographic forward model, the ray path integral can be approximated by a discrete
-summation to compute a travel time prediction.
+For a custom application, the Likelihood function needs to be defined,
+which can include any forward modelling.  The way the generic part of
+the code is formulated is that it is assumed that each observation
+needs to know the model image for the current iteration. A forward
+model can take the values of the model at each point and compute a
+prediction. For example, in a tomographic forward model, the ray path
+integral can be approximated by a discrete summation to compute a
+travel time prediction.
 
 Lastly, the prediction is then compared to the observation and a
 probabilisitic likelihood can be computed, commonly an indepedent
@@ -384,16 +327,22 @@ log likelihood is used and separated into
 and these are called {\tt like} and {\tt norm} in the code
 respectively. To implement a custom application, you first need to
 derive the likelihood and the operation of the forward model based
-on the model image.
+on the model image. Then you need to implement some functions of
+your own for running inversions. These functions are described in
+the following sections for C++. The fortran interface is functionally
+equivalent and the code implementing the regression problem in
+{\tt generalregressionf/genericregression.f90} is commented and
+should serve as a guide.
 
 \subsection{Loading data}
 
 The data file format is entirely in the control of the programmer.
-The command line application is passed a filename to load, and this is passed onto the load function
-directly. This file could be a raw data file or a configuration file that points
-to a series of files that require loading for the inverse problem. This function
-must load all necessary data for subsequent calculation of predictions and the likelihood. The
-interface is as follows:
+The command line application is passed a filename to load, and this is
+passed onto the load function directly. This file could be a raw data
+file or a configuration file that points to a series of files that
+require loading for the inverse problem. This function must load all
+necessary data for subsequent calculation of predictions and the
+likelihood. The interface is as follows:
 
 \begin{verbatim}
   int tdtwave2d_loaddata_(int *n,
@@ -411,8 +360,8 @@ The parameters are
 \item[height] The height of the model image
 \end{description}
 
-The first parameter is only needed for Fortran problems. This is also the reason
-that the integer parameters are passed as pointers.
+The first parameter is only needed for Fortran problems. This is also
+the reason that the integer parameters are passed as pointers.
 
 It is up to the custom application to permanently store any data
 necessary for the likelihood or calculation of predictions in this
@@ -423,9 +372,9 @@ error.  This will subsequently terminate the main program.
 
 \subsection{Computing predictions}
 
-The next function that needs to be implemented is the function that computes
-the predictions for a single observation. The C interface for this function
-is shown below
+The next function that needs to be implemented is the function that
+computes the predictions for a single observation. The C interface for
+this function is shown below
 
 
 \begin{verbatim}
@@ -439,7 +388,7 @@ is shown below
 
 The function passes in a observation index from 0 to the number of
 observations minus one (i.e. using C indexing). A cautionary note here
-for fortran here is that if the observations are stored in a standard
+for fortran users is that if the observations are stored in a standard
 fortran array, one needs to be added to this index (see fortran
 examples and the variable {\tt oi}).
 
@@ -538,7 +487,7 @@ a single processor where the likelihood is computed. In summary
 \subsection{Recommendations}
 
 The simplest path to starting a custom application is to copy 
-the C++ regression example and use that as
+the C++/Fortran regression example and use that as
 a template.
 
 For each of these examples, there is an example subdirectory
