@@ -6,6 +6,7 @@ all :
 	make -C generalregressioncpp
 	make -C generaltomocpp
 	make -C generalregressionf
+	make -C generaltomof
 
 documentation/manual.pdf : documentation/manual.tex
 	cd documentation && pdflatex manual && bibtex manual && pdflatex manual && pdflatex manual
