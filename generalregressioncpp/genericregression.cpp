@@ -36,8 +36,8 @@ extern "C" {
 
     if (fscanf(fp, "%lf %lf %lf %lf\n",
 	       &bounds.minlon,
-	       &bounds.minlat,
 	       &bounds.maxlon,
+	       &bounds.minlat,
 	       &bounds.maxlat) != 4) {
       return -1;
     }
@@ -59,7 +59,7 @@ extern "C" {
 
       int ii = (int)((obs[i].lon - bounds.minlon)/(bounds.maxlon - bounds.minlon) * (double)(*width));
       if (ii < 0 || ii >= (*width)) {
-	fprintf(stderr, "error: point %10.6f out of range\n", obs[i].lon);
+	fprintf(stderr, "error: point %10.6f out of range (%10.6f .. %10.6f)\n", obs[i].lon, bounds.minlon, bounds.maxlon);
 	return -1;
       }
 
@@ -135,8 +135,8 @@ extern "C" {
 
     fprintf(fp, "%15.9f %15.9f %15.9f %15.9f\n",
 	    bounds.minlon,
-	    bounds.minlat,
 	    bounds.maxlon,
+	    bounds.minlat,
 	    bounds.maxlat);
 	
     fprintf(fp, "%d\n", (int)obs.size());

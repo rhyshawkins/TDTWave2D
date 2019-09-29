@@ -70,7 +70,7 @@ if __name__ == '__main__':
             
             nx = -1.0 + 2.0 * (float(i) + 0.5)/float(args.width)
 
-            f.write('%15.9f ' % func(args.amplitude, args.scale, args.offset, nx, ny))
+            f.write('%15.9f ' % func(args.amplitude, args.offset, args.scale, nx, ny))
 
         f.write('\n')
             
