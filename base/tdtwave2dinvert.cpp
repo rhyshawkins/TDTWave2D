@@ -491,9 +491,9 @@ int main(int argc, char *argv[])
 	   wavetree2d_sub_dc(global.wt),
 	   global.lambda_scale);
 
-      INFO(birth.write_long_stats().c_str());
-      INFO(death.write_long_stats().c_str());
-      INFO(value.write_long_stats().c_str());
+      INFO("%s", birth.write_long_stats().c_str());
+      INFO("%s", death.write_long_stats().c_str());
+      INFO("%s", value.write_long_stats().c_str());
       if (hierarchical != nullptr) {
 	INFO(hierarchical->write_long_stats().c_str());
       }
@@ -540,19 +540,14 @@ int main(int argc, char *argv[])
     fprintf(stderr, "error: failed to create acceptance file\n");
     return -1;
   }
-  fprintf(fp, birth.write_long_stats().c_str());
-  fprintf(fp, "\n");
-  fprintf(fp, death.write_long_stats().c_str());
-  fprintf(fp, "\n");
-  fprintf(fp, value.write_long_stats().c_str());
-  fprintf(fp, "\n");
+  fprintf(fp, "%s\n", birth.write_long_stats().c_str());
+  fprintf(fp, "%s\n", death.write_long_stats().c_str());
+  fprintf(fp, "%s\n", value.write_long_stats().c_str());
   if (hierarchical != nullptr) {
-    fprintf(fp, hierarchical->write_long_stats().c_str());
-    fprintf(fp, "\n");
+    fprintf(fp, "%s\n", hierarchical->write_long_stats().c_str());
   }
   if (hierarchical_prior != nullptr) {
-    fprintf(fp, hierarchical_prior->write_long_stats().c_str());
-    fprintf(fp, "\n");
+    fprintf(fp, "%s\n", hierarchical_prior->write_long_stats().c_str());
   }
   fclose(fp);
   
